@@ -5,10 +5,8 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 
 from database import create_db, get_available_dates, get_news_by_date
-from fetcher import client as deepseek_client
 from scheduler import refresh_news, start_scheduler
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -72,69 +70,3 @@ async def api_cron():
     """Vercel Cron Job endpoint — triggers daily news refresh."""
     refresh_news()
     return {"status": "cron refresh completed"}
-
-
-class TranslateRequest(BaseModel):
-    texts: list[str]
-
-
-# Server-side translation cache (survives across requests within same Lambda instance)
-_translate_cache: dict[str, str] = {}
-
-
-@app.post("/api/translate")
-async def api_translate(req: TranslateRequest):
-    if not deepseek_client or not req.texts:
-        return {"translations": req.texts}
-
-    # Check cache for each text, only translate uncached ones
-    results = [None] * len(req.texts)
-    uncached_texts = []
-    uncached_indices = []
-    for i, text in enumerate(req.texts):
-        cached = _translate_cache.get(text)
-        if cached:
-            results[i] = cached
-        else:
-            uncached_texts.append(text)
-            uncached_indices.append(i)
-
-    if not uncached_texts:
-        return {"translations": results}
-
-    try:
-        combined = "\n---\n".join(uncached_texts)
-        response = deepseek_client.chat.completions.create(
-            model="deepseek-chat",
-            messages=[{"role": "user", "content": f"""你是一位资深科技媒体编辑和AI翻译专家，负责将英文科技简报翻译成地道的中文。你的翻译质量应该媲美人工翻译，绝不能有AI机翻的痕迹。
-
-要求：
-- 用自然流畅的中文表达，像36氪、晚点LatePost的资深编辑写的一样
-- 严禁生硬的机翻感，不要逐字翻译，要理解语境后重新用中文表达
-- 句式要符合中文习惯，避免英文语序（如被动句、从句嵌套）
-- 专业术语保留英文或用业内通用译法（如 AI、PM、SaaS、GPT）
-- 语气简洁有力，像在跟同行聊天，有洞察力
-- 每段翻译之间用 --- 分隔，保持原文顺序
-- 翻译后自查：如果读起来像机器翻译的，重新翻译
-
-以下是需要翻译的内容：
-
-{combined}"""}],
-        )
-        parts = response.choices[0].message.content.strip().split("---")
-        translations = [p.strip() for p in parts]
-        # Pad if DeepSeek returned fewer items
-        while len(translations) < len(uncached_texts):
-            translations.append(uncached_texts[len(translations)])
-        # Store in cache and fill results
-        for j, idx in enumerate(uncached_indices):
-            translated = translations[j] if j < len(translations) else uncached_texts[j]
-            _translate_cache[uncached_texts[j]] = translated
-            results[idx] = translated
-        return {"translations": results}
-    except Exception:
-        # Fill remaining with originals
-        for j, idx in enumerate(uncached_indices):
-            if results[idx] is None:
-                results[idx] = uncached_texts[j]
-        return {"translations": results}

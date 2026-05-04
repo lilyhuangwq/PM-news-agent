@@ -32,6 +32,9 @@ class NewsItem(Base):
     impact = Column(String(10), nullable=True)
     what = Column(Text, nullable=False)
     so_what = Column(Text, nullable=False)
+    title_zh = Column(Text, nullable=True)
+    what_zh = Column(Text, nullable=True)
+    so_what_zh = Column(Text, nullable=True)
 
 
 def create_db() -> None:
@@ -77,6 +80,12 @@ def save_news_batch(items: list[dict]) -> None:
                 existing.impact = item.get("impact", existing.impact)
                 existing.what = item.get("what", existing.what)
                 existing.so_what = item.get("so_what", existing.so_what)
+                if item.get("title_zh"):
+                    existing.title_zh = item["title_zh"]
+                if item.get("what_zh"):
+                    existing.what_zh = item["what_zh"]
+                if item.get("so_what_zh"):
+                    existing.so_what_zh = item["so_what_zh"]
             else:
                 session.add(
                     NewsItem(
@@ -90,6 +99,9 @@ def save_news_batch(items: list[dict]) -> None:
                         impact=item.get("impact", "mid"),
                         what=item.get("what", "Summary not available"),
                         so_what=item.get("so_what", "Summary not available"),
+                        title_zh=item.get("title_zh"),
+                        what_zh=item.get("what_zh"),
+                        so_what_zh=item.get("so_what_zh"),
                     )
                 )
         session.commit()
@@ -115,6 +127,9 @@ def get_news_by_date(fetch_date) -> dict[str, list[dict]]:
                     "impact": item.impact or "mid",
                     "what": item.what,
                     "so_what": item.so_what,
+                    "title_zh": item.title_zh or "",
+                    "what_zh": item.what_zh or "",
+                    "so_what_zh": item.so_what_zh or "",
                 }
             )
         return grouped

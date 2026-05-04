@@ -582,6 +582,46 @@ No explanation, no markdown."""
         return result
 
 
+TRANSLATE_PROMPT = """你是一位资深科技媒体编辑和AI翻译专家，负责将英文科技简报翻译成地道的中文。你的翻译质量应该媲美人工翻译，绝不能有AI机翻的痕迹。
+
+要求：
+- 用自然流畅的中文表达，像36氪、晚点LatePost的资深编辑写的一样
+- 严禁生硬的机翻感，不要逐字翻译，要理解语境后重新用中文表达
+- 句式要符合中文习惯，避免英文语序（如被动句、从句嵌套）
+- 专业术语保留英文或用业内通用译法（如 AI、PM、SaaS、GPT）
+- 语气简洁有力，像在跟同行聊天，有洞察力
+- 每段翻译之间用 --- 分隔，保持原文顺序
+- 翻译后自查：如果读起来像机器翻译的，重新翻译
+
+以下是需要翻译的内容：
+
+"""
+
+
+def translate_batch(texts: list[str]) -> list[str]:
+    """Translate a list of English texts to Chinese using DeepSeek."""
+    if not client or not texts:
+        return texts
+    non_empty = [(i, t) for i, t in enumerate(texts) if t and t.strip()]
+    if not non_empty:
+        return texts
+    try:
+        combined = "\n---\n".join(t for _, t in non_empty)
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": TRANSLATE_PROMPT + combined}],
+        )
+        parts = response.choices[0].message.content.strip().split("---")
+        translations = [p.strip() for p in parts]
+        result = list(texts)
+        for j, (orig_idx, _) in enumerate(non_empty):
+            result[orig_idx] = translations[j] if j < len(translations) else texts[orig_idx]
+        return result
+    except Exception as e:
+        print(f"Translation failed: {e}")
+        return texts
+
+
 def fetch_all_sections() -> dict[str, list[dict]]:
     from datetime import date as _date, timedelta
 

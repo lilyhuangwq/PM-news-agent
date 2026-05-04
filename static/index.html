@@ -96,8 +96,7 @@
 
   <script>
     // Language state
-    let currentLang = 'en';
-    const translationCache = {};
+    let currentLang = 'en';", "oldString": "    // Language state\n    let currentLang = 'en';\n    const translationCache = {};"}]
 
     // Tab configuration
     const tabs = [
@@ -272,61 +271,41 @@
 
         const displayItems = items.slice(0, 5);
 
-        // Prepare English texts
-        let titles = displayItems.map(i => i.title);
-        let whats = displayItems.map(i => i.what && i.what !== 'Summary not available' ? i.what : i.summary || i.title);
-        let soWhats = displayItems.map(i => i.so_what && i.so_what !== 'Summary not available' ? i.so_what : '');
+        // Prepare texts based on language
+        let titles, whats, soWhats, whyLabel;
+        if (currentLang === 'zh') {
+          titles = displayItems.map(i => i.title_zh || i.title);
+          whats = displayItems.map(i => (i.what_zh || i.what || i.summary || i.title));
+          soWhats = displayItems.map(i => (i.so_what_zh || i.so_what || ''));
+          whyLabel = '为什么重要：';
+        } else {
+          titles = displayItems.map(i => i.title);
+          whats = displayItems.map(i => i.what && i.what !== 'Summary not available' ? i.what : i.summary || i.title);
+          soWhats = displayItems.map(i => i.so_what && i.so_what !== 'Summary not available' ? i.so_what : '');
+          whyLabel = 'Why it matters:';
+        }
 
         // Get signal text
         let signalText = '';
         const sections = Object.values(data);
         for (const sitems of sections) {
           if (sitems && sitems.length > 0 && sitems[0].what && sitems[0].what !== 'Summary not available') {
-            signalText = sitems[0].what; break;
+            signalText = currentLang === 'zh' ? (sitems[0].what_zh || sitems[0].what) : sitems[0].what;
+            break;
           }
         }
         if (!signalText) {
           for (const sitems of sections) {
-            if (sitems && sitems.length > 0) { signalText = sitems[0].title; break; }
+            if (sitems && sitems.length > 0) {
+              signalText = currentLang === 'zh' ? (sitems[0].title_zh || sitems[0].title) : sitems[0].title;
+              break;
+            }
           }
         }
 
-        // Render English immediately, then translate in background
-        let whyLabel = 'Why it matters:';
+        document.getElementById('signalLabel').textContent = currentLang === 'zh' ? '今日信号：' : "Today's Signal:";
+        document.getElementById('todaySignal').textContent = signalText || (currentLang === 'zh' ? '今日暂无信号。' : 'No signal available today.');
         renderCards(displayItems, titles, whats, soWhats, whyLabel);
-        document.getElementById('signalLabel').textContent = "Today's Signal:";
-        document.getElementById('todaySignal').textContent = signalText || 'No signal available today.';
-
-        if (currentLang === 'zh') {
-          // Show translating indicator
-          newsFeed.querySelectorAll('.card-content').forEach(el => el.style.opacity = '0.5');
-          const signalEl = document.getElementById('todaySignal');
-          signalEl.textContent = '翻译中...';
-          document.getElementById('signalLabel').textContent = '今日信号：';
-
-          // Batch ALL texts into one translate call (articles + signal)
-          const allTexts = [...titles, ...whats, ...soWhats];
-          if (signalText) allTexts.push(signalText);
-          const toTranslate = [];
-          const indexMap = [];
-          allTexts.forEach((t, i) => {
-            if (t && t.trim()) { toTranslate.push(t); indexMap.push(i); }
-          });
-          if (toTranslate.length > 0) {
-            const results = await translateTexts(toTranslate);
-            const translated = [...allTexts];
-            indexMap.forEach((origIdx, resIdx) => { translated[origIdx] = results[resIdx]; });
-            const n = displayItems.length;
-            titles = translated.slice(0, n);
-            whats = translated.slice(n, n * 2);
-            soWhats = translated.slice(n * 2, n * 3);
-            if (signalText) signalEl.textContent = translated[n * 3];
-          } else {
-            signalEl.textContent = '今日暂无信号。';
-          }
-          whyLabel = '为什么重要：';
-          renderCards(displayItems, titles, whats, soWhats, whyLabel);
-        }
         return;
 
       } catch (error) {
@@ -379,24 +358,7 @@
       `).join('');
     }
 
-    async function translateTexts(texts) {
-      const cacheKey = texts.join('|||');
-      if (translationCache[cacheKey]) return translationCache[cacheKey];
-      try {
-        const res = await fetch('/api/translate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ texts })
-        });
-        const data = await res.json();
-        translationCache[cacheKey] = data.translations;
-        return data.translations;
-      } catch {
-        return texts;
-      }
-    }
-
-    async function toggleLang() {
+    function toggleLang() {
       currentLang = currentLang === 'en' ? 'zh' : 'en';
       const langLabel = document.getElementById('langLabel');
       const headerGreeting = document.getElementById('headerGreeting');
@@ -405,7 +367,7 @@
       headerGreeting.textContent = currentLang === 'zh' ? '早安，Lily' : 'GOOD MORNING, LILY';
 
       renderTabs();
-      await loadNews();
+      loadNews();
     }
   </script>
 </body>
