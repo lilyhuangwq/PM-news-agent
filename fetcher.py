@@ -508,6 +508,16 @@ def fetch_section_rss_items(section: str, target_date: str | None = None) -> lis
 def fetch_all_sections() -> dict[str, list[dict]]:
     result = {section: fetch_section_rss_items(section) for section in SECTIONS}
 
+    # Deduplicate URLs across sections — keep article in the first section that claimed it
+    seen_urls: set[str] = set()
+    for section in SECTIONS:
+        unique = []
+        for item in result.get(section, []):
+            if item["url"] not in seen_urls:
+                seen_urls.add(item["url"])
+                unique.append(item)
+        result[section] = unique
+
     # Redistribute impact levels across all articles: top 25% high, 25-75% mid, bottom 25% low
     all_items = []
     for section, items in result.items():

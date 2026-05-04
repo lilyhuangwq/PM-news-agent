@@ -64,6 +64,7 @@ def save_news_batch(items: list[dict]) -> None:
                 select(NewsItem).where(
                     NewsItem.url == item["url"],
                     NewsItem.fetch_date == item_date,
+                    NewsItem.section == item["section"],
                 )
             ).scalars().first()
 
