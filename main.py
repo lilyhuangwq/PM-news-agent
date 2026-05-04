@@ -74,6 +74,21 @@ class TranslateRequest(BaseModel):
     texts: list[str]
 
 
+@app.get("/api/debug/feeds")
+async def api_debug_feeds():
+    """Debug: check which RSS feeds work from the deployed environment."""
+    from fetcher import RSS_FEEDS, _parse_rss_feed, _dedupe_items
+    from datetime import date, timedelta
+    result = {}
+    for section, urls in RSS_FEEDS.items():
+        section_data = {}
+        for url in urls:
+            items = _parse_rss_feed(url)
+            section_data[url] = len(items)
+        result[section] = section_data
+    return result
+
+
 @app.post("/api/translate")
 async def api_translate(req: TranslateRequest):
     if not deepseek_client or not req.texts:
