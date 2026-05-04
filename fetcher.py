@@ -523,11 +523,19 @@ SECTION RULES:
 {RANKING_RULES}
 
 CLASSIFICATION RULES:
-- Each article goes to exactly ONE section
+- Each article goes to exactly ONE section — the BEST fit based on INCLUDE/EXCLUDE rules
 - Assign exactly {MAX_ITEMS_PER_SECTION} articles per section, {len(SECTIONS)} sections, {MAX_ITEMS_PER_SECTION * len(SECTIONS)} articles total
 - Follow the INCLUDE/EXCLUDE rules strictly for each section
 - Never select duplicate coverage of the same event — pick the most original source
 - Pick the BEST articles for each section from the pool below
+
+COMMON MISCLASSIFICATIONS TO AVOID:
+- AI research, model distillation, AI safety debates → "AI & Tech Frontier", NOT "Startup & VC"
+- US court cases about AI companies (OpenAI, Google) → "AI & Tech Frontier", NOT "Global Tech"
+- General AI industry news → "AI & Tech Frontier", NOT "Product & Builder"
+- "Global Tech" is for NON-US international tech news only (Asia, Europe, cross-border)
+- "Startup & VC" is ONLY for funding rounds, M&A, IPOs — not general AI industry topics
+- "Product & Builder" requires a concrete product launch, update, or pivot
 
 Articles:
 {chr(10).join(candidates)}
