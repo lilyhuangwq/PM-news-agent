@@ -255,9 +255,6 @@
         const newsFeed = document.getElementById('newsFeed');
         console.log('loadNews data sections:', Object.keys(data), 'activeTab:', activeTab, 'items:', (data[activeTab] || []).length);
         
-        // Update Today's Signal from first available item
-        updateTodaySignal(data);
-        
         const items = data[activeTab] || [];
         
         if (!items.length) {
