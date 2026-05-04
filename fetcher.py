@@ -72,11 +72,11 @@ FALLBACK_MIN_ITEMS = 3
 
 # Section-specific editorial focus for ranking
 SECTION_FOCUS = {
-    "AI & Tech Frontier": "Prioritize model releases, research breakthroughs, and AI capability milestones.",
-    "Product & Builder": "Prioritize PMF case studies, growth data, product decision stories, and builder insights.",
-    "Startup & VC": "Prioritize AI-sector funding rounds ($10M+), investor public takes, and market signals.",
-    "Global Tech": "Prioritize China/Japan/Korea big tech moves, cross-border expansion, and US-Asia tech dynamics.",
-    "Deep Read": "Only select long-form analysis pieces. Prioritize Stratechery, Every.to, a16z, Ben Evans caliber writing.",
+    "AI & Tech Frontier": "Prioritize AI model releases, research breakthroughs, AI capability milestones, and major AI company news.",
+    "Product & Builder": "Prioritize major product launches, product updates, product strategy case studies, PMF stories, pricing changes, and builder tools. Must be about a specific product or product decision — NOT general AI industry news.",
+    "Startup & VC": "Prioritize AI-sector funding rounds ($10M+), M&A, investor public takes, startup launches, and market signals.",
+    "Global Tech": "Prioritize China/Japan/Korea/Europe big tech moves, cross-border expansion, geopolitics affecting tech, and US-Asia tech dynamics.",
+    "Deep Read": "Only select long-form analysis pieces with deep insight. Prioritize Stratechery, Every.to, a16z, Ben Evans caliber writing. Must be substantial analysis, not news summaries.",
 }
 
 RANKING_RULES = """Signal over Noise scoring:
@@ -505,20 +505,137 @@ def fetch_section_rss_items(section: str, target_date: str | None = None) -> lis
     return final_items
 
 
+def _classify_articles(items: list[dict]) -> dict[str, list[dict]]:
+    """Use AI to classify articles into the best-fit section."""
+    if not client or not items:
+        # Fallback: round-robin into sections
+        result = {s: [] for s in SECTIONS}
+        for i, item in enumerate(items):
+            result[SECTIONS[i % len(SECTIONS)]].append(item)
+        return result
+
+    section_descriptions = "\n".join(f"- {s}: {SECTION_FOCUS[s]}" for s in SECTIONS)
+    candidates = []
+    for i, item in enumerate(items):
+        candidates.append(f"{i}. [{item.get('source_name','')}] {item['title']}\n   {item.get('summary','')[:120]}")
+
+    prompt = f"""You are a news editor classifying articles into sections for an AI PM newsletter.
+
+Sections:
+{section_descriptions}
+
+IMPORTANT RULES:
+- Each article goes to exactly ONE section
+- Assign exactly {MAX_ITEMS_PER_SECTION} articles per section, {len(SECTIONS)} sections, {MAX_ITEMS_PER_SECTION * len(SECTIONS)} articles total
+- "Product & Builder" must focus on specific product launches, product updates, product strategy, pricing, or builder tools. General AI news does NOT belong here.
+- "Deep Read" must be long-form analysis only, not news summaries
+- Pick the BEST articles for each section from the pool below
+
+Articles:
+{chr(10).join(candidates)}
+
+Return ONLY a JSON object mapping section names to arrays of article indices:
+{{{{
+  "AI & Tech Frontier": [0, 3, 7, 12, 4],
+  "Product & Builder": [1, 5, 8, 15, 20],
+  "Startup & VC": [2, 6, 9, 14, 18],
+  "Global Tech": [10, 11, 13, 16, 19],
+  "Deep Read": [17, 21, 22, 23, 24]
+}}}}
+No explanation, no markdown."""
+
+    try:
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+        data = json.loads(response.choices[0].message.content.strip())
+        result = {s: [] for s in SECTIONS}
+        used = set()
+        for section in SECTIONS:
+            indices = data.get(section, [])
+            for idx in indices:
+                if isinstance(idx, int) and 0 <= idx < len(items) and idx not in used:
+                    result[section].append(items[idx])
+                    used.add(idx)
+
+        # Pad any section that got fewer than MAX_ITEMS_PER_SECTION
+        unused = [i for i in range(len(items)) if i not in used]
+        for section in SECTIONS:
+            while len(result[section]) < MAX_ITEMS_PER_SECTION and unused:
+                result[section].append(items[unused.pop(0)])
+
+        return result
+    except Exception as e:
+        print(f"Classification failed, using per-section fallback: {e}")
+        # Fallback: round-robin
+        result = {s: [] for s in SECTIONS}
+        for i, item in enumerate(items):
+            result[SECTIONS[i % len(SECTIONS)]].append(item)
+        return result
+
+
 def fetch_all_sections() -> dict[str, list[dict]]:
-    result = {section: fetch_section_rss_items(section) for section in SECTIONS}
+    from datetime import date as _date, timedelta
 
-    # Deduplicate URLs across sections — keep article in the first section that claimed it
-    seen_urls: set[str] = set()
+    # Step 1: Merge ALL RSS feeds from all sections into one pool
+    all_urls = set()
+    for urls in RSS_FEEDS.values():
+        all_urls.update(urls)
+
+    all_items = []
+    for url in all_urls:
+        all_items.extend(_parse_rss_feed(url))
+    all_items = _dedupe_items(all_items)
+
+    # Step 2: Filter by date (today, then 7-day window, then all)
+    target_date = _date.today().isoformat()
+    today_items = [item for item in all_items if item.get("pub_date") == target_date]
+
+    target_count = MAX_ITEMS_PER_SECTION * len(SECTIONS)  # 25 articles
+
+    if len(today_items) < target_count:
+        td = _date.fromisoformat(target_date)
+        recent_dates = {(td - timedelta(days=i)).isoformat() for i in range(8)}
+        today_items = [item for item in all_items if item.get("pub_date") in recent_dates]
+
+    if len(today_items) < target_count:
+        today_items = all_items
+
+    # Step 3: Pre-rank the full pool to get top candidates
+    pool = today_items[:80]  # Cap to avoid huge prompts
+
+    # Step 4: AI classifies articles into sections
+    classified = _classify_articles(pool)
+
+    # Step 5: AI rank within each section and generate summaries
+    result = {}
     for section in SECTIONS:
-        unique = []
-        for item in result.get(section, []):
-            if item["url"] not in seen_urls:
-                seen_urls.add(item["url"])
-                unique.append(item)
-        result[section] = unique
+        section_pool = classified.get(section, [])
+        # Rank within section
+        ranked = _rank_and_select(section, section_pool)
 
-    # Redistribute impact levels across all articles: top 25% high, 25-75% mid, bottom 25% low
+        # Pad if needed
+        if len(ranked) < MAX_ITEMS_PER_SECTION:
+            used_urls = {item["url"] for item in ranked}
+            for item in section_pool:
+                if item["url"] not in used_urls:
+                    ranked.append(item)
+                    used_urls.add(item["url"])
+                if len(ranked) >= MAX_ITEMS_PER_SECTION:
+                    break
+
+        # Generate summaries
+        for item in ranked[:MAX_ITEMS_PER_SECTION]:
+            what, so_what, impact = generate_summary(item["title"], item["summary"])
+            item["what"] = what
+            item["so_what"] = so_what
+            item["impact"] = impact
+
+        result[section] = ranked[:MAX_ITEMS_PER_SECTION]
+
+    # Step 6: Redistribute impact levels: top 25% high, 25-75% mid, bottom 25% low
     all_items = []
     for section, items in result.items():
         for item in items:
