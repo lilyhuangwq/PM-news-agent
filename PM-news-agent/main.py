@@ -1,6 +1,5 @@
 from contextlib import asynccontextmanager
 from datetime import date
-from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -11,8 +10,6 @@ from database import create_db, get_available_dates, get_news_by_date
 from fetcher import client as deepseek_client
 from scheduler import refresh_news, start_scheduler
 
-BASE_DIR = Path(__file__).resolve().parent
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db()
@@ -20,24 +17,15 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="PM News Agent", lifespan=lifespan)
-app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/", include_in_schema=False)
 async def root():
-    return FileResponse(str(BASE_DIR / "static" / "index.html"), headers={"Cache-Control": "no-cache"})
+    return FileResponse("static/index.html", headers={"Cache-Control": "no-cache"})
 
 @app.get("/api/news/today")
 async def api_news_today():
-    data = get_news_by_date(date.today())
-    if data:
-        return data
-    # Before today's refresh, fall back to most recent available date
-    dates = get_available_dates()
-    if dates:
-        from datetime import date as date_type
-        latest = date_type.fromisoformat(dates[0])
-        return get_news_by_date(latest)
-    return {}
+    return get_news_by_date(date.today())
 
 @app.get("/api/news/{news_date}")
 async def api_news_by_date(news_date: str):

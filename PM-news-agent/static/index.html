@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI News Briefing</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body class="bg-gray-50">
+  <div class="min-h-screen">
+    <div class="max-w-3xl mx-auto px-4 py-6">
+      <!-- Personalized Header -->
+      <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+        <div class="flex items-center justify-between mb-3">
+          <h1 class="text-lg font-semibold" id="headerGreeting">GOOD MORNING, LILY</h1>
+          <div class="flex items-center gap-3">
+            <div class="relative inline-block" id="calendarWidget">
+              <button onclick="toggleCalendar()" id="calendarToggle"
+                class="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer">
+                <i class="fas fa-calendar-alt text-indigo-500"></i>
+                <span id="calendarSelectedLabel">Today</span>
+              </button>
+              <div id="calendarDropdown" class="hidden absolute right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-4" style="width: 320px;">
+                <div class="flex items-center justify-between mb-3">
+                  <button onclick="calendarPrevMonth()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-indigo-500 text-lg">&lt;</button>
+                  <span id="calendarMonthYear" class="text-sm font-semibold text-gray-800"></span>
+                  <button onclick="calendarNextMonth()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-indigo-500 text-lg">&gt;</button>
+                </div>
+                <div class="grid grid-cols-7 text-center text-xs font-semibold text-gray-400 mb-1">
+                  <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
+                </div>
+                <div id="calendarGrid" class="grid grid-cols-7 text-center text-sm"></div>
+              </div>
+            </div>
+            <button onclick="toggleLang()" id="langToggle"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300 hover:bg-gray-100 transition-colors">
+              <i class="fas fa-language"></i>
+              <span id="langLabel">中文</span>
+            </button>
+            <span class="text-sm text-gray-600" id="todayDate"></span>
+          </div>
+        </div>
+        
+        <div class="flex items-start gap-2 bg-yellow-50 border border-yellow-200 rounded-md p-3">
+          <i class="fas fa-bolt text-yellow-600 mt-0.5 flex-shrink-0"></i>
+          <div>
+            <span class="font-medium text-sm" id="signalLabel">Today's Signal:</span>
+            <span class="text-sm text-gray-700 ml-2" id="todaySignal">
+              Loading today's signal...
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Navigation -->
+      <div class="flex gap-2 mb-6 overflow-x-auto pb-2" id="tabContainer">
+        <!-- Tabs will be generated here -->
+      </div>
+
+      <!-- News Feed -->
+      <div class="space-y-4 mb-6" id="newsFeed">
+        <!-- News items will be generated here -->
+      </div>
+
+      <!-- Deep Read Section -->
+      <div class="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-6">
+        <div class="flex items-center gap-2 mb-4">
+          <i class="fas fa-book-open text-indigo-600"></i>
+          <h2 class="text-lg font-bold text-gray-900" id="deepReadHeading">Deep Read of the Day</h2>
+        </div>
+        
+        <h3 class="text-xl font-semibold text-gray-900 mb-3" id="deepReadTitle">
+          Loading deep read...
+        </h3>
+        
+        <p class="text-sm text-gray-700 leading-relaxed mb-4" id="deepReadSummary">
+          Loading content...
+        </p>
+        
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-gray-500">Estimated reading time: 5-8 minutes</span>
+          
+          <div class="flex items-center gap-2">
+            <button class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+              <i class="fas fa-bookmark"></i>
+              Save for later
+            </button>
+            
+            <button id="readNowBtn" class="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
+              Read now
+              <i class="fas fa-arrow-right"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+
+    </div>
+  </div>
+
+  <script>
+    // Language state
+    let currentLang = 'en';
+    const translationCache = {};
+
+    // Tab configuration
+    const tabs = [
+      { id: 'AI & Tech Frontier', label: 'AI & Tech', labelZh: 'AI前沿', icon: 'fa-rocket' },
+      { id: 'Product & Builder', label: 'Product', labelZh: '产品', icon: 'fa-hammer' },
+      { id: 'Startup & VC', label: 'VC', labelZh: '创投', icon: 'fa-dollar-sign' },
+      { id: 'Global Tech', label: 'Global', labelZh: '全球', icon: 'fa-globe' },
+      { id: 'Deep Read', label: 'Deep Read', labelZh: '深度', icon: 'fa-book' }
+    ];
+
+    let activeTab = 'AI & Tech Frontier';
+    const todayKey = new Date().toISOString().split("T")[0];
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      updateDate();
+      renderTabs();
+      loadDates();
+      setTimeout(() => loadNews(), 100);
+      loadDeepRead();
+    });
+
+    function updateDate() {
+      const now = new Date();
+      const todayDate = document.getElementById('todayDate');
+      todayDate.textContent = now.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric' 
+      });
+    }
+
+    function renderTabs() {
+      const tabContainer = document.getElementById('tabContainer');
+      tabContainer.innerHTML = tabs.map(tab => `
+        <button
+          onclick="switchTab('${tab.id}')"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors ${
+            activeTab === tab.id
+              ? 'bg-black text-white'
+              : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+          }"
+        >
+          <i class="fas ${tab.icon}"></i>
+          ${currentLang === 'zh' ? tab.labelZh : tab.label}
+        </button>
+      `).join('');
+    }
+
+    function switchTab(tabId) {
+      activeTab = tabId;
+      renderTabs();
+      loadNews();
+    }
+
+    let availableDates = new Set();
+    let calendarDate = new Date();
+    let selectedDate = todayKey;
+
+    async function loadDates() {
+      try {
+        const response = await fetch('/api/dates');
+        const dates = await response.json();
+        availableDates = new Set(dates || []);
+        renderCalendar();
+      } catch (error) {
+        console.error('Failed to load dates:', error);
+      }
+    }
+
+    function toggleCalendar() {
+      const dd = document.getElementById('calendarDropdown');
+      dd.classList.toggle('hidden');
+    }
+
+    function calendarPrevMonth() {
+      calendarDate.setMonth(calendarDate.getMonth() - 1);
+      renderCalendar();
+    }
+
+    function calendarNextMonth() {
+      calendarDate.setMonth(calendarDate.getMonth() + 1);
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const year = calendarDate.getFullYear();
+      const month = calendarDate.getMonth();
+      const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      document.getElementById('calendarMonthYear').textContent = `${monthNames[month]} ${year}`;
+
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const prevDays = new Date(year, month, 0).getDate();
+
+      let html = '';
+      for (let i = firstDay - 1; i >= 0; i--) {
+        html += `<div class="py-2 text-gray-300">${prevDays - i}</div>`;
+      }
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const isToday = dateStr === todayKey;
+        const isSelected = dateStr === selectedDate;
+        const hasData = availableDates.has(dateStr);
+
+        let cls = 'py-2 rounded-lg cursor-default ';
+        if (isSelected) {
+          cls += 'bg-indigo-600 text-white font-semibold ';
+        } else if (isToday) {
+          cls += 'border border-indigo-400 text-indigo-600 font-semibold ';
+        } else if (hasData) {
+          cls += 'text-gray-800 hover:bg-indigo-50 cursor-pointer font-medium ';
+        } else {
+          cls += 'text-gray-300 ';
+        }
+
+        if (hasData) {
+          html += `<div class="${cls}" onclick="selectCalendarDate('${dateStr}')" style="cursor:pointer">${d}</div>`;
+        } else {
+          html += `<div class="${cls}">${d}</div>`;
+        }
+      }
+      const totalCells = firstDay + daysInMonth;
+      const remaining = (7 - (totalCells % 7)) % 7;
+      for (let i = 1; i <= remaining; i++) {
+        html += `<div class="py-2 text-gray-300">${i}</div>`;
+      }
+
+      document.getElementById('calendarGrid').innerHTML = html;
+    }
+
+    function selectCalendarDate(dateStr) {
+      selectedDate = dateStr;
+      const d = new Date(dateStr + 'T00:00:00');
+      const label = dateStr === todayKey ? 'Today' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      document.getElementById('calendarSelectedLabel').textContent = label;
+      document.getElementById('calendarDropdown').classList.add('hidden');
+      renderCalendar();
+      loadNewsForDate(dateStr);
+    }
+
+    document.addEventListener('click', (e) => {
+      const widget = document.getElementById('calendarWidget');
+      if (widget && !widget.contains(e.target)) {
+        document.getElementById('calendarDropdown').classList.add('hidden');
+      }
+    });
+
+    async function loadNews(date = null) {
+      if (activeTab === 'Deep Read') {
+        loadDeepRead();
+        document.getElementById('newsFeed').innerHTML = '';
+        return;
+      }
+
+      try {
+        const endpoint = date 
+          ? `/api/news/${date}` 
+          : '/api/news/today';
+        
+        const response = await fetch(endpoint);
+        const data = await response.json();
+        const newsFeed = document.getElementById('newsFeed');
+        console.log('loadNews data sections:', Object.keys(data), 'activeTab:', activeTab, 'items:', (data[activeTab] || []).length);
+        
+        // Update Today's Signal from first available item
+        updateTodaySignal(data);
+        
+        const items = data[activeTab] || [];
+        
+        if (!items.length) {
+          newsFeed.innerHTML = `
+            <div class="bg-white border border-gray-200 rounded-lg p-6 text-center">
+              <p class="text-gray-500">${currentLang === 'zh' ? '本版块暂无新闻' : 'No news available for this section'}</p>
+            </div>
+          `;
+          return;
+        }
+
+        const displayItems = items.slice(0, 5);
+
+        // Translate if in Chinese mode
+        let titles = displayItems.map(i => i.title);
+        let whats = displayItems.map(i => i.what && i.what !== 'Summary not available' ? i.what : i.summary || i.title);
+        let soWhats = displayItems.map(i => i.so_what && i.so_what !== 'Summary not available' ? i.so_what : '');
+
+        if (currentLang === 'zh') {
+          // Only translate non-empty texts
+          const allTexts = [...titles, ...whats, ...soWhats];
+          const toTranslate = [];
+          const indexMap = [];
+          allTexts.forEach((t, i) => {
+            if (t && t.trim()) { toTranslate.push(t); indexMap.push(i); }
+          });
+          if (toTranslate.length > 0) {
+            const results = await translateTexts(toTranslate);
+            const translated = [...allTexts];
+            indexMap.forEach((origIdx, resIdx) => { translated[origIdx] = results[resIdx]; });
+            const n = displayItems.length;
+            titles = translated.slice(0, n);
+            whats = translated.slice(n, n * 2);
+            soWhats = translated.slice(n * 2, n * 3);
+          }
+        }
+
+        const whyLabel = currentLang === 'zh' ? '为什么重要：' : 'Why it matters:';
+
+        newsFeed.innerHTML = displayItems.map((item, i) => `
+          <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+            <div class="flex items-start gap-5">
+              <span class="text-3xl font-bold text-gray-300 leading-none select-none pt-1">${i + 1}</span>
+              <div class="flex-1 min-w-0">
+                <a href="${item.url || '#'}" target="_blank" rel="noopener noreferrer"
+                   class="block hover:underline">
+                  <h3 class="text-xl font-bold text-gray-900 leading-snug">${titles[i]}</h3>
+                </a>
+                <div class="flex items-center gap-2 mt-2 text-xs text-gray-500 flex-wrap">
+                  <span class="inline-flex items-center gap-1 font-semibold uppercase tracking-wider text-gray-700">
+                    <span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
+                    HIGH IMPACT
+                  </span>
+                  <span class="text-gray-300">·</span>
+                  <span>${item.source || 'Unknown source'}</span>
+                  <span class="text-gray-300">·</span>
+                  <span>${item.fetch_date || ''}</span>
+                </div>
+                <p class="text-sm text-gray-700 leading-relaxed mt-4">${whats[i]}</p>
+                ${soWhats[i] ? `
+                <div class="mt-4 border-l-4 border-amber-400 bg-amber-50 rounded-r-lg py-3 px-4">
+                  <p class="text-sm text-gray-700 leading-relaxed">
+                    <span class="font-bold italic text-gray-900">${whyLabel}</span>&nbsp; ${soWhats[i]}
+                  </p>
+                </div>` : ''}
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('Failed to load news:', error);
+        document.getElementById('newsFeed').innerHTML = `
+          <div class="bg-white border border-red-200 rounded-lg p-6 text-center">
+            <p class="text-red-500">Failed to load news. Please try again later.</p>
+          </div>
+        `;
+      }
+    }
+
+    async function loadNewsForDate(date) {
+      await loadNews(date);
+    }
+
+    async function updateTodaySignal(data) {
+      const signalEl = document.getElementById('todaySignal');
+      const signalLabel = document.getElementById('signalLabel');
+      signalLabel.textContent = currentLang === 'zh' ? '今日信号：' : "Today's Signal:";
+
+      let text = '';
+      const sections = Object.values(data);
+      for (const items of sections) {
+        if (items && items.length > 0 && items[0].what && items[0].what !== 'Summary not available') {
+          text = items[0].what;
+          break;
+        }
+      }
+      if (!text) {
+        for (const items of sections) {
+          if (items && items.length > 0) { text = items[0].title; break; }
+        }
+      }
+      if (!text) { text = currentLang === 'zh' ? '今日暂无信号。' : 'No signal available today.'; }
+
+      if (currentLang === 'zh' && text) {
+        const translated = await translateTexts([text]);
+        text = translated[0];
+      }
+      signalEl.textContent = text;
+    }
+
+    async function loadDeepRead() {
+      const deepReadTitle = document.getElementById('deepReadTitle');
+      const deepReadSummary = document.getElementById('deepReadSummary');
+      const readNowBtn = document.getElementById('readNowBtn');
+      const deepReadHeading = document.getElementById('deepReadHeading');
+      deepReadHeading.textContent = currentLang === 'zh' ? '今日深度阅读' : 'Deep Read of the Day';
+
+      try {
+        const response = await fetch('/api/news/today');
+        const data = await response.json();
+        const items = data['Deep Read'] || [];
+        updateTodaySignal(data);
+
+        if (items.length > 0) {
+          const item = items[0];
+          let title = item.title;
+          let desc = item.what && item.what !== 'Summary not available' 
+            ? item.what + ' — ' + (item.so_what || '') 
+            : item.summary || 'No summary available.';
+
+          if (currentLang === 'zh') {
+            const translated = await translateTexts([title, desc]);
+            title = translated[0];
+            desc = translated[1];
+          }
+
+          deepReadTitle.textContent = title;
+          deepReadSummary.textContent = desc;
+          readNowBtn.onclick = () => window.open(item.url, '_blank');
+        } else {
+          deepReadTitle.textContent = currentLang === 'zh' ? '今日暂无深度阅读' : 'No deep read available today';
+          deepReadSummary.textContent = currentLang === 'zh' ? '请稍后再来查看深度分析。' : 'Check back later for in-depth analysis.';
+        }
+      } catch (e) {
+        deepReadTitle.textContent = 'Failed to load deep read';
+        deepReadSummary.textContent = 'Please try again later.';
+      }
+    }
+
+    async function translateTexts(texts) {
+      const cacheKey = texts.join('|||');
+      if (translationCache[cacheKey]) return translationCache[cacheKey];
+      try {
+        const res = await fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ texts })
+        });
+        const data = await res.json();
+        translationCache[cacheKey] = data.translations;
+        return data.translations;
+      } catch {
+        return texts;
+      }
+    }
+
+    async function toggleLang() {
+      currentLang = currentLang === 'en' ? 'zh' : 'en';
+      const langLabel = document.getElementById('langLabel');
+      const headerGreeting = document.getElementById('headerGreeting');
+      
+      langLabel.textContent = currentLang === 'en' ? '中文' : 'EN';
+      headerGreeting.textContent = currentLang === 'zh' ? '早安，Lily' : 'GOOD MORNING, LILY';
+
+      renderTabs();
+      await loadNews();
+      await loadDeepRead();
+    }
+  </script>
+</body>
+</html>

@@ -7,7 +7,7 @@ from fetcher import fetch_all_sections
 from database import get_available_dates, save_news_batch
 
 logger = logging.getLogger("pm_news_agent.scheduler")
-scheduler = BackgroundScheduler(timezone="America/Los_Angeles")
+scheduler = BackgroundScheduler(timezone="UTC")
 
 
 def _build_batch_items(section_items: dict[str, list[dict]], fetch_date: date) -> list[dict]:
@@ -49,7 +49,7 @@ def _today_has_data() -> bool:
 
 def start_scheduler() -> None:
     if not scheduler.get_job("daily_news_refresh"):
-        scheduler.add_job(refresh_news, trigger="cron", hour=6, minute=0, id="daily_news_refresh")
+        scheduler.add_job(refresh_news, trigger="cron", hour=7, minute=0, id="daily_news_refresh")
     if not scheduler.running:
         scheduler.start()
     if not _today_has_data():
