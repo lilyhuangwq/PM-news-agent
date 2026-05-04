@@ -28,6 +28,7 @@ class NewsItem(Base):
     source = Column(String(256), nullable=False)
     section = Column(String(128), nullable=False, index=True)
     fetch_date = Column(Date, nullable=False, index=True)
+    pub_date = Column(String(10), nullable=True)
     what = Column(Text, nullable=False)
     so_what = Column(Text, nullable=False)
 
@@ -70,6 +71,7 @@ def save_news_batch(items: list[dict]) -> None:
                 existing.summary = item["summary"]
                 existing.source = item.get("source", existing.source)
                 existing.section = item["section"]
+                existing.pub_date = item.get("pub_date", existing.pub_date)
                 existing.what = item.get("what", existing.what)
                 existing.so_what = item.get("so_what", existing.so_what)
             else:
@@ -81,6 +83,7 @@ def save_news_batch(items: list[dict]) -> None:
                         source=item.get("source", ""),
                         section=item["section"],
                         fetch_date=item_date,
+                        pub_date=item.get("pub_date"),
                         what=item.get("what", "Summary not available"),
                         so_what=item.get("so_what", "Summary not available"),
                     )
@@ -104,6 +107,7 @@ def get_news_by_date(fetch_date) -> dict[str, list[dict]]:
                     "source": item.source,
                     "section": item.section,
                     "fetch_date": item.fetch_date.isoformat(),
+                    "pub_date": item.pub_date or item.fetch_date.isoformat(),
                     "what": item.what,
                     "so_what": item.so_what,
                 }

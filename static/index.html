@@ -327,7 +327,7 @@
                   <span class="text-gray-300">·</span>
                   <span>${item.source || 'Unknown source'}</span>
                   <span class="text-gray-300">·</span>
-                  <span>${item.fetch_date || ''}</span>
+                  <span>${item.pub_date || item.fetch_date || ''}</span>
                 </div>
                 <p class="text-sm text-gray-700 leading-relaxed mt-4">${whats[i]}</p>
                 ${soWhats[i] ? `

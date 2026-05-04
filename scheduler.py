@@ -22,6 +22,7 @@ def _build_batch_items(section_items: dict[str, list[dict]], fetch_date: date) -
                     "source": item.get("source_name", ""),
                     "section": section,
                     "fetch_date": fetch_date,
+                    "pub_date": item.get("pub_date"),
                     "what": item.get("what", "Summary not available"),
                     "so_what": item.get("so_what", "Summary not available"),
                 }

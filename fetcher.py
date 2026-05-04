@@ -101,12 +101,38 @@ def _parse_rss_feed(url: str) -> list[dict]:
                 continue
             title = (entry.get("title") or "").strip()
             summary = _short_summary(entry.get("summary", entry.get("description", "")))
+            # Extract actual publication date
+            pub_date = None
+            for date_field in ("published_parsed", "updated_parsed"):
+                parsed = entry.get(date_field)
+                if parsed:
+                    try:
+                        from time import mktime
+                        pub_date = datetime.fromtimestamp(mktime(parsed)).strftime("%Y-%m-%d")
+                        break
+                    except Exception:
+                        pass
+            if not pub_date:
+                for date_field in ("published", "updated"):
+                    raw = entry.get(date_field)
+                    if raw:
+                        try:
+                            from email.utils import parsedate_to_datetime
+                            pub_date = parsedate_to_datetime(raw).strftime("%Y-%m-%d")
+                            break
+                        except Exception:
+                            try:
+                                pub_date = datetime.fromisoformat(raw.replace("Z", "+00:00")).strftime("%Y-%m-%d")
+                                break
+                            except Exception:
+                                pass
             items.append(
                 {
                     "title": title,
                     "summary": summary,
                     "url": link,
                     "source_name": (entry.get("source", {}).get("title") or _source_name_from_url(link)),
+                    "pub_date": pub_date,
                 }
             )
         return items
