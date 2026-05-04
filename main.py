@@ -28,14 +28,15 @@ async def root():
 
 @app.get("/api/news/today")
 async def api_news_today():
+    from fastapi.responses import JSONResponse
     data = get_news_by_date(date.today())
     if data:
-        return data
+        return JSONResponse(content=data, headers={"Cache-Control": "public, max-age=300, s-maxage=600"})
     # Before today's refresh, fall back to most recent available date
     dates = get_available_dates()
     if dates:
         latest = date.fromisoformat(dates[0])
-        return get_news_by_date(latest)
+        return JSONResponse(content=get_news_by_date(latest), headers={"Cache-Control": "public, max-age=300, s-maxage=600"})
     # No data at all (e.g. fresh Vercel cold start) — fetch now
     try:
         refresh_news()

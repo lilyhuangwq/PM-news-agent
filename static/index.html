@@ -4,8 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI News Briefing</title>
+  <link rel="preconnect" href="https://cdn.tailwindcss.com" />
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'" />
+  <style>
+    /* Loading skeleton animation */
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 0.5rem; }
+    .skeleton-text { height: 1rem; margin-bottom: 0.5rem; }
+    .skeleton-title { height: 1.5rem; width: 80%; margin-bottom: 0.75rem; }
+  </style>
 </head>
 <body class="bg-gray-50">
   <div class="min-h-screen">
@@ -60,7 +69,25 @@
 
       <!-- News Feed -->
       <div class="space-y-4 mb-6" id="newsFeed">
-        <!-- News items will be generated here -->
+        <!-- Loading skeleton shown immediately -->
+        <div class="bg-white border border-gray-200 rounded-lg p-6">
+          <div class="flex items-start gap-5">
+            <div class="skeleton" style="width:2rem;height:2rem;flex-shrink:0"></div>
+            <div class="flex-1"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text" style="width:60%"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:90%"></div></div>
+          </div>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-lg p-6">
+          <div class="flex items-start gap-5">
+            <div class="skeleton" style="width:2rem;height:2rem;flex-shrink:0"></div>
+            <div class="flex-1"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text" style="width:60%"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:90%"></div></div>
+          </div>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-lg p-6">
+          <div class="flex items-start gap-5">
+            <div class="skeleton" style="width:2rem;height:2rem;flex-shrink:0"></div>
+            <div class="flex-1"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text" style="width:60%"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:90%"></div></div>
+          </div>
+        </div>
       </div>
 
 
