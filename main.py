@@ -78,12 +78,32 @@ class TranslateRequest(BaseModel):
     texts: list[str]
 
 
+# Server-side translation cache (survives across requests within same Lambda instance)
+_translate_cache: dict[str, str] = {}
+
+
 @app.post("/api/translate")
 async def api_translate(req: TranslateRequest):
     if not deepseek_client or not req.texts:
         return {"translations": req.texts}
+
+    # Check cache for each text, only translate uncached ones
+    results = [None] * len(req.texts)
+    uncached_texts = []
+    uncached_indices = []
+    for i, text in enumerate(req.texts):
+        cached = _translate_cache.get(text)
+        if cached:
+            results[i] = cached
+        else:
+            uncached_texts.append(text)
+            uncached_indices.append(i)
+
+    if not uncached_texts:
+        return {"translations": results}
+
     try:
-        combined = "\n---\n".join(req.texts)
+        combined = "\n---\n".join(uncached_texts)
         response = deepseek_client.chat.completions.create(
             model="deepseek-chat",
             messages=[{"role": "user", "content": f"""你是一位资深科技媒体编辑和AI翻译专家，负责将英文科技简报翻译成地道的中文。你的翻译质量应该媲美人工翻译，绝不能有AI机翻的痕迹。
@@ -104,8 +124,17 @@ async def api_translate(req: TranslateRequest):
         parts = response.choices[0].message.content.strip().split("---")
         translations = [p.strip() for p in parts]
         # Pad if DeepSeek returned fewer items
-        while len(translations) < len(req.texts):
-            translations.append(req.texts[len(translations)])
-        return {"translations": translations[:len(req.texts)]}
+        while len(translations) < len(uncached_texts):
+            translations.append(uncached_texts[len(translations)])
+        # Store in cache and fill results
+        for j, idx in enumerate(uncached_indices):
+            translated = translations[j] if j < len(translations) else uncached_texts[j]
+            _translate_cache[uncached_texts[j]] = translated
+            results[idx] = translated
+        return {"translations": results}
     except Exception:
-        return {"translations": req.texts}
+        # Fill remaining with originals
+        for j, idx in enumerate(uncached_indices):
+            if results[idx] is None:
+                results[idx] = uncached_texts[j]
+        return {"translations": results}
