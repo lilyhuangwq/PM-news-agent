@@ -26,17 +26,20 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 async def root():
     return FileResponse(str(BASE_DIR / "static" / "index.html"), headers={"Cache-Control": "no-cache"})
 
+_NEWS_CACHE_HEADERS = {"Cache-Control": "public, s-maxage=600, max-age=300, stale-while-revalidate=60"}
+
+
 @app.get("/api/news/today")
 async def api_news_today():
     from fastapi.responses import JSONResponse
     data = get_news_by_date(date.today())
     if data:
-        return JSONResponse(content=data, headers={"Cache-Control": "public, max-age=300, s-maxage=600"})
+        return JSONResponse(content=data, headers=_NEWS_CACHE_HEADERS)
     # Before today's refresh, fall back to most recent available date
     dates = get_available_dates()
     if dates:
         latest = date.fromisoformat(dates[0])
-        return JSONResponse(content=get_news_by_date(latest), headers={"Cache-Control": "public, max-age=300, s-maxage=600"})
+        return JSONResponse(content=get_news_by_date(latest), headers=_NEWS_CACHE_HEADERS)
     # No data at all (e.g. fresh Vercel cold start) — fetch now
     try:
         refresh_news()
