@@ -30,22 +30,19 @@ RSS_FEEDS = {
     ],
     "Product & Builder": [
         "https://www.lennysnewsletter.com/feed",
-        "https://firstround.com/review/feed/",
-        "https://www.reforge.com/blog/rss.xml",
-        "https://blackboxofpm.com/feed",
-        "https://productlessons.xyz/feed",
-        "https://www.growth.design/feed",
-        "https://casestudy.club/feed",
-        "https://www.productled.org/feed",
-        "https://openviewpartners.com/feed/",
         "https://www.latent.space/feed",
         "https://www.aitidbits.ai/feed",
         "https://www.exponentialview.co/feed",
-        "https://softwarecrisis.dev/feed",
         "https://www.interconnects.ai/feed",
-        "https://www.indiehackers.com/feed.rss",
-        "https://hackernewsletter.com/issues.rss",
         "https://tldr.tech/api/rss/founders",
+        "https://www.producthunt.com/feed",
+        "https://hnrss.org/frontpage",
+        "https://newsletter.pragmaticengineer.com/feed",
+        "https://blog.superhuman.com/rss/",
+        "https://www.intercom.com/blog/feed/",
+        "https://www.svpg.com/feed/",
+        "https://www.departmentofproduct.com/feed/",
+        "https://tldr.tech/api/rss/webdev",
     ],
     "Startup & VC": [
         "https://a16z.com/feed/",
@@ -466,11 +463,11 @@ def fetch_section_rss_items(section: str, target_date: str | None = None) -> lis
         target_date = _date.today().isoformat()
     today_items = [item for item in all_items if item.get("pub_date") == target_date]
 
-    # If too few articles from today, include yesterday and day-before
-    if len(today_items) < FALLBACK_MIN_ITEMS:
+    # If too few articles from today, include recent days (up to 7 for weekly newsletters)
+    if len(today_items) < MAX_ITEMS_PER_SECTION:
         from datetime import date as _date, timedelta
         td = _date.fromisoformat(target_date)
-        recent_dates = {target_date, (td - timedelta(days=1)).isoformat(), (td - timedelta(days=2)).isoformat()}
+        recent_dates = {(td - timedelta(days=i)).isoformat() for i in range(8)}
         today_items = [item for item in all_items if item.get("pub_date") in recent_dates]
 
     # Fallback to NewsAPI if not enough items
