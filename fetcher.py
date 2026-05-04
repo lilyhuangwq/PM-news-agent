@@ -384,7 +384,7 @@ def _source_diverse_pick(items: list[dict], n: int) -> list[dict]:
     return selected
 
 
-def fetch_section_rss_items(section: str) -> list[dict]:
+def fetch_section_rss_items(section: str, target_date: str | None = None) -> list[dict]:
     # Fetch from ALL RSS feeds for this section
     all_items = []
     for url in RSS_FEEDS.get(section, []):
@@ -392,13 +392,26 @@ def fetch_section_rss_items(section: str) -> list[dict]:
 
     all_items = _dedupe_items(all_items)
 
-    # Fallback to NewsAPI if not enough items
-    if len(all_items) < FALLBACK_MIN_ITEMS:
-        all_items.extend(_fetch_newsapi_fallback(section))
-        all_items = _dedupe_items(all_items)
+    # Filter to only articles published on the target date
+    if target_date is None:
+        from datetime import date as _date
+        target_date = _date.today().isoformat()
+    today_items = [item for item in all_items if item.get("pub_date") == target_date]
 
-    # AI-rank and select the top items from the full pool
-    final_items = _rank_and_select(section, all_items)
+    # If too few articles from today, include yesterday and day-before
+    if len(today_items) < FALLBACK_MIN_ITEMS:
+        from datetime import date as _date, timedelta
+        td = _date.fromisoformat(target_date)
+        recent_dates = {target_date, (td - timedelta(days=1)).isoformat(), (td - timedelta(days=2)).isoformat()}
+        today_items = [item for item in all_items if item.get("pub_date") in recent_dates]
+
+    # Fallback to NewsAPI if not enough items
+    if len(today_items) < FALLBACK_MIN_ITEMS:
+        today_items.extend(_fetch_newsapi_fallback(section))
+        today_items = _dedupe_items(today_items)
+
+    # AI-rank and select the top items from the filtered pool
+    final_items = _rank_and_select(section, today_items)
 
     # Generate AI summaries only for the final selected items
     for item in final_items:
