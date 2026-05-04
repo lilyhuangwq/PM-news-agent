@@ -581,9 +581,12 @@ COMMON MISCLASSIFICATIONS TO AVOID:
 - US court cases about AI companies (OpenAI, Google) → "AI & Tech Frontier", NOT "Global Tech"
 - General AI industry news → "AI & Tech Frontier", NOT "Product & Builder"
 - "Global Tech" is for NON-US international tech news only (Asia, Europe, cross-border)
-- "Startup & VC" is ONLY for funding rounds, M&A, IPOs — not general AI industry topics
-- "Product & Builder" requires a concrete product launch, update, or pivot
-- "Deep Read" must be a long-form essay/analysis, not a news article
+- "Startup & VC" is ONLY for funding rounds (Series A+), M&A, IPOs, investor memos — NOT product launches, NOT AI trends, NOT app growth stories
+- A new app/platform launching → "Product & Builder", NOT "Startup & VC" (unless the article is specifically about its funding round)
+- AI model benchmarks, AI-driven growth trends → "AI & Tech Frontier", NOT "Startup & VC"
+- "Product & Builder" requires a CONCRETE product launch, update, or pivot — NOT opinion pieces, NOT "I'm worried about X", NOT commentary without a specific product change
+- Opinion pieces, developer commentary, or concern posts without a concrete product change → DO NOT put in "Product & Builder"
+- "Deep Read" must be a long-form essay/analysis (5+ min), not a news article
 
 Articles:
 {chr(10).join(candidates)}
