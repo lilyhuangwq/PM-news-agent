@@ -1,7 +1,0 @@
-fastapi
-uvicorn[standard]
-sqlalchemy
-apscheduler
-feedparser
-requests
-openai
