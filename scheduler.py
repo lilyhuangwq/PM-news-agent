@@ -53,19 +53,23 @@ def refresh_news() -> None:
 
 
 def _pre_translate_batch(batch: list[dict]) -> None:
-    """Translate title, what, so_what for all items and add zh fields."""
-    titles = [item.get("title", "") for item in batch]
-    whats = [item.get("what", "") for item in batch]
-    so_whats = [item.get("so_what", "") for item in batch]
+    """Translate title, what, so_what for all items and add zh fields.
+    Translates in chunks of 5 items (15 texts) for reliability."""
+    chunk_size = 5
+    for start in range(0, len(batch), chunk_size):
+        chunk = batch[start:start + chunk_size]
+        titles = [item.get("title", "") for item in chunk]
+        whats = [item.get("what", "") for item in chunk]
+        so_whats = [item.get("so_what", "") for item in chunk]
 
-    all_texts = titles + whats + so_whats
-    translated = translate_batch(all_texts)
+        all_texts = titles + whats + so_whats
+        translated = translate_batch(all_texts)
 
-    n = len(batch)
-    for i, item in enumerate(batch):
-        item["title_zh"] = translated[i]
-        item["what_zh"] = translated[n + i]
-        item["so_what_zh"] = translated[n * 2 + i]
+        n = len(chunk)
+        for i, item in enumerate(chunk):
+            item["title_zh"] = translated[i]
+            item["what_zh"] = translated[n + i]
+            item["so_what_zh"] = translated[n * 2 + i]
 
 
 def _today_has_data() -> bool:
