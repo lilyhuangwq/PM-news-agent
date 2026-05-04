@@ -210,9 +210,9 @@ Article summary: {summary}
 
 Write three fields:
 
-1. "what" — 2-3 factual sentences, 30-50 words. Include specific names, numbers, data points, and key details. No opinions.
+1. "what" — 2-3 factual sentences summarizing the key news. Include specific names, numbers, data points, and key details. Be informative and precise. No opinions.
 
-2. "so_what" — 2 sentences on why this matters for an AI founder, 30-50 words. Be concrete about strategic implications: market timing, competitive dynamics, regulatory risk, distribution, funding climate, or technical moats.
+2. "so_what" — 2-3 sentences on why this matters for an AI founder. Be concrete about strategic implications: market timing, competitive dynamics, regulatory risk, distribution, funding climate, or technical moats. Connect the dots for the reader.
 
 3. "impact" — Rate as "high", "mid", or "low" using this scoring:
    HIGH (+3): Major AI model release, big tech acquisition/pivot, $50M+ funding, regulatory shift
