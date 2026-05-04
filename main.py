@@ -77,16 +77,30 @@ class TranslateRequest(BaseModel):
 @app.get("/api/debug/feeds")
 async def api_debug_feeds():
     """Debug: check which RSS feeds work from the deployed environment."""
-    from fetcher import RSS_FEEDS, _parse_rss_feed, _dedupe_items
+    from fetcher import RSS_FEEDS, _parse_rss_feed, _dedupe_items, MAX_ITEMS_PER_SECTION, _rank_and_select
     from datetime import date, timedelta
-    result = {}
-    for section, urls in RSS_FEEDS.items():
-        section_data = {}
-        for url in urls:
-            items = _parse_rss_feed(url)
-            section_data[url] = len(items)
-        result[section] = section_data
-    return result
+    section = "Product & Builder"
+    all_items = []
+    feed_counts = {}
+    for url in RSS_FEEDS[section]:
+        items = _parse_rss_feed(url)
+        feed_counts[url] = len(items)
+        all_items.extend(items)
+    deduped = _dedupe_items(all_items)
+    target = date.today().isoformat()
+    today_only = [i for i in deduped if i.get("pub_date") == target]
+    recent_dates = {(date.today() - timedelta(days=i)).isoformat() for i in range(8)}
+    week_items = [i for i in deduped if i.get("pub_date") in recent_dates]
+    ranked = _rank_and_select(section, week_items)
+    return {
+        "feeds": feed_counts,
+        "total_raw": len(all_items),
+        "total_deduped": len(deduped),
+        "today_count": len(today_only),
+        "week_count": len(week_items),
+        "ranked_count": len(ranked),
+        "ranked_titles": [r["title"][:60] for r in ranked],
+    }
 
 
 @app.post("/api/translate")
