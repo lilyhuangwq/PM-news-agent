@@ -96,7 +96,7 @@
 
   <script>
     // Language state
-    let currentLang = 'en';
+    let currentLang = 'en';", "oldString": "    // Language state\n    let currentLang = 'en';\n    const translationCache = {};"}]
 
     // Tab configuration
     const tabs = [
