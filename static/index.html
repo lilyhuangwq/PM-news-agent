@@ -63,38 +63,6 @@
         <!-- News items will be generated here -->
       </div>
 
-      <!-- Deep Read Section -->
-      <div class="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-6">
-        <div class="flex items-center gap-2 mb-4">
-          <i class="fas fa-book-open text-indigo-600"></i>
-          <h2 class="text-lg font-bold text-gray-900" id="deepReadHeading">Deep Read of the Day</h2>
-        </div>
-        
-        <h3 class="text-xl font-semibold text-gray-900 mb-3" id="deepReadTitle">
-          Loading deep read...
-        </h3>
-        
-        <p class="text-sm text-gray-700 leading-relaxed mb-4" id="deepReadSummary">
-          Loading content...
-        </p>
-        
-        <div class="flex items-center justify-between">
-          <span class="text-xs text-gray-500">Estimated reading time: 5-8 minutes</span>
-          
-          <div class="flex items-center gap-2">
-            <button class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-              <i class="fas fa-bookmark"></i>
-              Save for later
-            </button>
-            
-            <button id="readNowBtn" class="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
-              Read now
-              <i class="fas fa-arrow-right"></i>
-            </button>
-          </div>
-        </div>
-      </div>
-
 
     </div>
   </div>
@@ -122,7 +90,6 @@
       renderTabs();
       loadDates();
       setTimeout(() => loadNews(), 100);
-      loadDeepRead();
     });
 
     function updateDate() {
@@ -252,12 +219,6 @@
     });
 
     async function loadNews(date = null) {
-      if (activeTab === 'Deep Read') {
-        loadDeepRead();
-        document.getElementById('newsFeed').innerHTML = '';
-        return;
-      }
-
       try {
         const endpoint = date 
           ? `/api/news/${date}` 
@@ -381,45 +342,6 @@
       signalEl.textContent = text;
     }
 
-    async function loadDeepRead() {
-      const deepReadTitle = document.getElementById('deepReadTitle');
-      const deepReadSummary = document.getElementById('deepReadSummary');
-      const readNowBtn = document.getElementById('readNowBtn');
-      const deepReadHeading = document.getElementById('deepReadHeading');
-      deepReadHeading.textContent = currentLang === 'zh' ? '今日深度阅读' : 'Deep Read of the Day';
-
-      try {
-        const response = await fetch('/api/news/today');
-        const data = await response.json();
-        const items = data['Deep Read'] || [];
-        updateTodaySignal(data);
-
-        if (items.length > 0) {
-          const item = items[0];
-          let title = item.title;
-          let desc = item.what && item.what !== 'Summary not available' 
-            ? item.what + ' — ' + (item.so_what || '') 
-            : item.summary || 'No summary available.';
-
-          if (currentLang === 'zh') {
-            const translated = await translateTexts([title, desc]);
-            title = translated[0];
-            desc = translated[1];
-          }
-
-          deepReadTitle.textContent = title;
-          deepReadSummary.textContent = desc;
-          readNowBtn.onclick = () => window.open(item.url, '_blank');
-        } else {
-          deepReadTitle.textContent = currentLang === 'zh' ? '今日暂无深度阅读' : 'No deep read available today';
-          deepReadSummary.textContent = currentLang === 'zh' ? '请稍后再来查看深度分析。' : 'Check back later for in-depth analysis.';
-        }
-      } catch (e) {
-        deepReadTitle.textContent = 'Failed to load deep read';
-        deepReadSummary.textContent = 'Please try again later.';
-      }
-    }
-
     async function translateTexts(texts) {
       const cacheKey = texts.join('|||');
       if (translationCache[cacheKey]) return translationCache[cacheKey];
@@ -447,7 +369,6 @@
 
       renderTabs();
       await loadNews();
-      await loadDeepRead();
     }
   </script>
 </body>
