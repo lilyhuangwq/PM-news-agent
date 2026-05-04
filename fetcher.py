@@ -70,6 +70,15 @@ NEWSAPI_TIMEOUT = 10
 MAX_ITEMS_PER_SECTION = 5
 FALLBACK_MIN_ITEMS = 3
 
+# Per-section item counts — Deep Read gets exactly 1 long-form piece
+ITEMS_PER_SECTION = {
+    "AI & Tech Frontier": 5,
+    "Product & Builder": 5,
+    "Startup & VC": 5,
+    "Global Tech": 5,
+    "Deep Read": 1,
+}
+
 # Section-specific editorial focus for ranking
 SECTION_FOCUS = {
     "AI & Tech Frontier": """INCLUDE: AI model releases, capability breakthroughs, AI research papers with real-world impact, major AI infrastructure updates, big tech AI strategy moves (Google, OpenAI, Anthropic, Meta, Microsoft).
@@ -522,12 +531,19 @@ SECTION RULES:
 
 {RANKING_RULES}
 
-CLASSIFICATION RULES:
-- Each article goes to exactly ONE section — the BEST fit based on INCLUDE/EXCLUDE rules
-- Assign exactly {MAX_ITEMS_PER_SECTION} articles per section, {len(SECTIONS)} sections, {MAX_ITEMS_PER_SECTION * len(SECTIONS)} articles total
+ITEM COUNTS PER SECTION:
+- AI & Tech Frontier: 5 articles
+- Product & Builder: 5 articles
+- Startup & VC: 5 articles
+- Global Tech: 5 articles
+- Deep Read: 1 article (ONE long-form analysis only)
+
+CRITICAL RULES:
+- Each article can appear in ONLY ONE section — NO duplicates across sections
+- An article about the same event/topic can only appear once, even if worded differently
 - Follow the INCLUDE/EXCLUDE rules strictly for each section
 - Never select duplicate coverage of the same event — pick the most original source
-- Pick the BEST articles for each section from the pool below
+- For Deep Read: pick exactly 1 article that is a long-form analysis (5+ min read), NOT a news article
 
 COMMON MISCLASSIFICATIONS TO AVOID:
 - AI research, model distillation, AI safety debates → "AI & Tech Frontier", NOT "Startup & VC"
@@ -536,17 +552,20 @@ COMMON MISCLASSIFICATIONS TO AVOID:
 - "Global Tech" is for NON-US international tech news only (Asia, Europe, cross-border)
 - "Startup & VC" is ONLY for funding rounds, M&A, IPOs — not general AI industry topics
 - "Product & Builder" requires a concrete product launch, update, or pivot
+- "Deep Read" must be a long-form essay/analysis, not a news article
 
 Articles:
 {chr(10).join(candidates)}
 
-Return ONLY a JSON object mapping section names to arrays of article indices:
+Return ONLY a JSON object mapping section names to arrays of article indices.
+Deep Read MUST have exactly 1 index. Other sections should have 5 indices each.
+No article index can appear in more than one section.
 {{{{
   "AI & Tech Frontier": [0, 3, 7, 12, 4],
   "Product & Builder": [1, 5, 8, 15, 20],
   "Startup & VC": [2, 6, 9, 14, 18],
   "Global Tech": [10, 11, 13, 16, 19],
-  "Deep Read": [17, 21, 22, 23, 24]
+  "Deep Read": [17]
 }}}}
 No explanation, no markdown."""
 
@@ -561,15 +580,18 @@ No explanation, no markdown."""
         used = set()
         for section in SECTIONS:
             indices = data.get(section, [])
+            section_limit = ITEMS_PER_SECTION.get(section, MAX_ITEMS_PER_SECTION)
             for idx in indices:
                 if isinstance(idx, int) and 0 <= idx < len(items) and idx not in used:
-                    result[section].append(items[idx])
-                    used.add(idx)
+                    if len(result[section]) < section_limit:
+                        result[section].append(items[idx])
+                        used.add(idx)
 
-        # Pad any section that got fewer than MAX_ITEMS_PER_SECTION
+        # Pad any section that got fewer than its target (except Deep Read)
         unused = [i for i in range(len(items)) if i not in used]
         for section in SECTIONS:
-            while len(result[section]) < MAX_ITEMS_PER_SECTION and unused:
+            section_limit = ITEMS_PER_SECTION.get(section, MAX_ITEMS_PER_SECTION)
+            while len(result[section]) < section_limit and unused:
                 result[section].append(items[unused.pop(0)])
 
         return result
@@ -639,7 +661,7 @@ def fetch_all_sections() -> dict[str, list[dict]]:
     target_date = _date.today().isoformat()
     today_items = [item for item in all_items if item.get("pub_date") == target_date]
 
-    target_count = MAX_ITEMS_PER_SECTION * len(SECTIONS)  # 25 articles
+    target_count = sum(ITEMS_PER_SECTION.values())  # 21 articles total
 
     if len(today_items) < target_count:
         td = _date.fromisoformat(target_date)
@@ -657,29 +679,39 @@ def fetch_all_sections() -> dict[str, list[dict]]:
 
     # Step 5: AI rank within each section and generate summaries
     result = {}
+    global_used_urls = set()  # Cross-section dedup
     for section in SECTIONS:
+        section_limit = ITEMS_PER_SECTION.get(section, MAX_ITEMS_PER_SECTION)
         section_pool = classified.get(section, [])
+
+        # Remove articles already used in another section
+        section_pool = [item for item in section_pool if _normalize_url(item["url"]) not in global_used_urls]
+
         # Rank within section
-        ranked = _rank_and_select(section, section_pool)
+        ranked = _rank_and_select(section, section_pool, n=section_limit)
 
         # Pad if needed
-        if len(ranked) < MAX_ITEMS_PER_SECTION:
-            used_urls = {item["url"] for item in ranked}
+        if len(ranked) < section_limit:
+            used_urls = {_normalize_url(item["url"]) for item in ranked}
             for item in section_pool:
-                if item["url"] not in used_urls:
+                if _normalize_url(item["url"]) not in used_urls:
                     ranked.append(item)
-                    used_urls.add(item["url"])
-                if len(ranked) >= MAX_ITEMS_PER_SECTION:
+                    used_urls.add(_normalize_url(item["url"]))
+                if len(ranked) >= section_limit:
                     break
 
+        # Track globally used URLs
+        for item in ranked[:section_limit]:
+            global_used_urls.add(_normalize_url(item["url"]))
+
         # Generate summaries
-        for item in ranked[:MAX_ITEMS_PER_SECTION]:
+        for item in ranked[:section_limit]:
             what, so_what, impact = generate_summary(item["title"], item["summary"])
             item["what"] = what
             item["so_what"] = so_what
             item["impact"] = impact
 
-        result[section] = ranked[:MAX_ITEMS_PER_SECTION]
+        result[section] = ranked[:section_limit]
 
     # Step 6: Redistribute impact levels: top 25% high, 25-75% mid, bottom 25% low
     all_items = []
