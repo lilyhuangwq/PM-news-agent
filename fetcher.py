@@ -74,6 +74,41 @@ NEWSAPI_TIMEOUT = 10
 MAX_ITEMS_PER_SECTION = 5
 FALLBACK_MIN_ITEMS = 3
 
+# Section-specific editorial focus for ranking
+SECTION_FOCUS = {
+    "AI & Tech Frontier": "Prioritize model releases, research breakthroughs, and AI capability milestones.",
+    "Product & Builder": "Prioritize PMF case studies, growth data, product decision stories, and builder insights.",
+    "Startup & VC": "Prioritize AI-sector funding rounds ($10M+), investor public takes, and market signals.",
+    "Global Tech": "Prioritize China/Japan/Korea big tech moves, cross-border expansion, and US-Asia tech dynamics.",
+    "Deep Read": "Only select long-form analysis pieces. Prioritize Stratechery, Every.to, a16z, Ben Evans caliber writing.",
+}
+
+RANKING_RULES = """Signal over Noise scoring:
++3  Directly impacts AI product decisions or startup direction
++2  Big tech strategic move (launch/acquisition/layoff)
++2  Funding/market signal ($10M+ round, or clear trend)
++1  Data-backed product/growth case study
+-1  Opinion/prediction piece without factual basis
+-2  Duplicate coverage of same event (pick best source only)
+-2  PR piece / sponsored content
+-3  Entertainment / non-industry content
+
+MUST INCLUDE if present:
+- Major AI model releases or capability breakthroughs
+- Big tech strategic moves (acquisitions, pivots, layoffs)
+- Funding rounds $10M+ in AI/tech
+- Regulatory changes affecting AI products
+
+PRIORITIZE:
+- News with concrete data over opinion pieces
+- First reports over follow-up coverage
+- Builder/founder-relevant insights over general tech news
+
+EXCLUDE:
+- Duplicate coverage of same event (pick best source only)
+- PR pieces without substance
+- Prediction/speculation without factual basis"""
+
 
 def _normalize_url(url: str) -> str:
     try:
@@ -172,16 +207,16 @@ def _newsapi_query(section: str) -> str:
 def generate_summary(title: str, summary: str) -> tuple[str, str]:
     if not client:
         return summary or title, ""
-    prompt = f"""You are a sharp, senior tech analyst writing a daily briefing for an AI PM who is about to leave Microsoft to start an AI company in the US.
+    prompt = f"""You are a news curator for an AI PM preparing to start an AI company in the US.
 
 Article title: {title}
 Article summary: {summary}
 
 Write two sections:
 
-1. "what" — 2-3 sentences summarizing the key facts. Include specific numbers, names, or details from the article. Be concrete, not vague. (40-60 words)
+1. "what" — 1 factual sentence, max 20 words. Include specific names, numbers, or data points. No opinions.
 
-2. "so_what" — 2-3 sentences explaining why this matters for someone building an AI startup or shipping AI products. Connect it to real strategic implications: market timing, competitive dynamics, regulatory risk, distribution, funding climate, or technical moats. Be opinionated. (40-60 words)
+2. "so_what" — 1 sentence on why this matters for an AI founder, max 25 words. Be concrete about strategic implications: market timing, competitive dynamics, regulatory risk, distribution, funding climate, or technical moats.
 
 Return ONLY valid JSON: {{"what": "...", "so_what": "..."}}
 No markdown, no code fences."""
@@ -300,13 +335,17 @@ def _rank_and_select(section: str, items: list[dict], n: int = MAX_ITEMS_PER_SEC
             item = items[idx]
             candidates.append(f"{idx}. [{item.get('source_name','')}] {item['title']}\n   {item.get('summary','')[:120]}")
 
-        prompt = f"""You are a senior tech editor curating the "{section}" section of a daily briefing.
-Pick the {n} most newsworthy and important articles from these candidates.
+        section_focus = SECTION_FOCUS.get(section, "")
+        prompt = f"""You are a news curator for an AI PM preparing to start an AI company in the US.
+Curating the "{section}" section. {section_focus}
 
-Candidates:
+{RANKING_RULES}
+
+Pick the {n} highest-signal articles from these candidates:
+
 {chr(10).join(candidates)}
 
-Return ONLY a JSON object like {{"selected": [0, 3, 7, 12, 4]}} with the indices of your picks.
+Return ONLY a JSON object like {{"selected": [0, 3, 7, 12, 4]}} with the indices of your picks, ranked by importance.
 No explanation, no markdown."""
 
         try:
@@ -335,15 +374,19 @@ No explanation, no markdown."""
         tag = "[GUARANTEED] " if idx in guaranteed else ""
         candidates.append(f"{idx}. {tag}[{item.get('source_name','')}] {item['title']}\n   {item.get('summary','')[:120]}")
 
-    prompt = f"""You are a senior tech editor curating the "{section}" section of a daily briefing for AI startup founders.
+    section_focus = SECTION_FOCUS.get(section, "")
+    prompt = f"""You are a news curator for an AI PM preparing to start an AI company in the US.
+Curating the "{section}" section. {section_focus}
+
+{RANKING_RULES}
+
 You must include the {len(guaranteed)} GUARANTEED articles (one per source for diversity).
 Pick {remaining_slots} more articles from the remaining candidates to fill {n} total slots.
-Prioritize: breaking news, concrete data/announcements, strategic significance.
 
 Candidates:
 {chr(10).join(candidates)}
 
-Return ONLY a JSON object like {{"selected": [0, 3, 7, 12, 4]}} — exactly {n} indices total (guaranteed + your picks).
+Return ONLY a JSON object like {{"selected": [0, 3, 7, 12, 4]}} — exactly {n} indices total (guaranteed + your picks), ranked by importance.
 No explanation, no markdown."""
 
     try:
