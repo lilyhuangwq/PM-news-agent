@@ -492,7 +492,32 @@ def fetch_section_rss_items(section: str, target_date: str | None = None) -> lis
 
 
 def fetch_all_sections() -> dict[str, list[dict]]:
-    return {section: fetch_section_rss_items(section) for section in SECTIONS}
+    result = {section: fetch_section_rss_items(section) for section in SECTIONS}
+
+    # Redistribute impact levels across all articles: top 25% high, 25-75% mid, bottom 25% low
+    all_items = []
+    for section, items in result.items():
+        for item in items:
+            all_items.append(item)
+
+    if all_items:
+        # Sort by AI-assigned impact score (high=3, mid=2, low=1) to establish relative ordering
+        score_map = {"high": 3, "mid": 2, "low": 1}
+        all_items.sort(key=lambda x: score_map.get(x.get("impact", "mid"), 2), reverse=True)
+
+        n = len(all_items)
+        high_cutoff = max(1, round(n * 0.25))
+        low_cutoff = max(1, round(n * 0.25))
+
+        for i, item in enumerate(all_items):
+            if i < high_cutoff:
+                item["impact"] = "high"
+            elif i >= n - low_cutoff:
+                item["impact"] = "low"
+            else:
+                item["impact"] = "mid"
+
+    return result
 
 
 def fetch_all_news() -> list[dict]:
