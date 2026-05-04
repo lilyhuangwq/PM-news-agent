@@ -469,6 +469,10 @@ def fetch_section_rss_items(section: str, target_date: str | None = None) -> lis
         recent_dates = {(td - timedelta(days=i)).isoformat() for i in range(8)}
         today_items = [item for item in all_items if item.get("pub_date") in recent_dates]
 
+    # Last resort: use all available items regardless of date
+    if len(today_items) < MAX_ITEMS_PER_SECTION:
+        today_items = all_items
+
     # Fallback to NewsAPI if not enough items
     if len(today_items) < FALLBACK_MIN_ITEMS:
         today_items.extend(_fetch_newsapi_fallback(section))
@@ -476,6 +480,16 @@ def fetch_section_rss_items(section: str, target_date: str | None = None) -> lis
 
     # AI-rank and select the top items from the filtered pool
     final_items = _rank_and_select(section, today_items)
+
+    # Ensure we always return exactly MAX_ITEMS_PER_SECTION items
+    if len(final_items) < MAX_ITEMS_PER_SECTION and len(today_items) > len(final_items):
+        used_urls = {item["url"] for item in final_items}
+        for item in today_items:
+            if item["url"] not in used_urls:
+                final_items.append(item)
+                used_urls.add(item["url"])
+            if len(final_items) >= MAX_ITEMS_PER_SECTION:
+                break
 
     # Generate AI summaries only for the final selected items
     for item in final_items:
