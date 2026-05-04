@@ -321,6 +321,37 @@ def _dedupe_items(items: list[dict]) -> list[dict]:
     return filtered
 
 
+def _title_words(title: str) -> set[str]:
+    """Extract significant words from a title for similarity comparison."""
+    stop = {"the","a","an","is","are","was","were","in","on","at","to","for","of","and","or","with","its","by","from","as","has","have","had","will","be","been","this","that","it"}
+    words = set()
+    for w in title.lower().split():
+        w = w.strip(".,!?:;\"'—–-()[]")
+        if len(w) > 2 and w not in stop:
+            words.add(w)
+    return words
+
+
+def _dedupe_same_event(items: list[dict]) -> list[dict]:
+    """Remove articles covering the same event (high title word overlap)."""
+    result = []
+    for item in items:
+        words = _title_words(item.get("title", ""))
+        is_dupe = False
+        for kept in result:
+            kept_words = _title_words(kept.get("title", ""))
+            if not words or not kept_words:
+                continue
+            overlap = len(words & kept_words)
+            smaller = min(len(words), len(kept_words))
+            if smaller > 0 and overlap / smaller >= 0.5:
+                is_dupe = True
+                break
+        if not is_dupe:
+            result.append(item)
+    return result
+
+
 def _rank_and_select(section: str, items: list[dict], n: int = MAX_ITEMS_PER_SECTION) -> list[dict]:
     """Use DeepSeek to pick the top N most newsworthy articles from a candidate pool, ensuring source diversity."""
     if not client or len(items) <= n:
@@ -672,7 +703,7 @@ def fetch_all_sections() -> dict[str, list[dict]]:
         today_items = all_items
 
     # Step 3: Pre-rank the full pool to get top candidates
-    pool = today_items[:80]  # Cap to avoid huge prompts
+    pool = _dedupe_same_event(today_items)[:80]  # Dedup same-event, cap to avoid huge prompts
 
     # Step 4: AI classifies articles into sections
     classified = _classify_articles(pool)
@@ -686,6 +717,9 @@ def fetch_all_sections() -> dict[str, list[dict]]:
 
         # Remove articles already used in another section
         section_pool = [item for item in section_pool if _normalize_url(item["url"]) not in global_used_urls]
+
+        # Remove same-event duplicates within section
+        section_pool = _dedupe_same_event(section_pool)
 
         # Rank within section
         ranked = _rank_and_select(section, section_pool, n=section_limit)
