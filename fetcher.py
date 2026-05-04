@@ -575,6 +575,8 @@ CRITICAL RULES:
 - Follow the INCLUDE/EXCLUDE rules strictly for each section
 - Never select duplicate coverage of the same event — pick the most original source
 - For Deep Read: pick exactly 1 article that is a long-form analysis (5+ min read), NOT a news article
+- It is BETTER to leave a section with fewer articles than to put a wrong article in it
+- If an article doesn't clearly fit any section's INCLUDE criteria, skip it entirely
 
 COMMON MISCLASSIFICATIONS TO AVOID:
 - AI research, model distillation, AI safety debates → "AI & Tech Frontier", NOT "Startup & VC"
@@ -624,13 +626,7 @@ No explanation, no markdown."""
                         result[section].append(items[idx])
                         used.add(idx)
 
-        # Pad any section that got fewer than its target (except Deep Read)
-        unused = [i for i in range(len(items)) if i not in used]
-        for section in SECTIONS:
-            section_limit = ITEMS_PER_SECTION.get(section, MAX_ITEMS_PER_SECTION)
-            while len(result[section]) < section_limit and unused:
-                result[section].append(items[unused.pop(0)])
-
+        # No padding — better to have fewer articles than wrong ones
         return result
     except Exception as e:
         print(f"Classification failed, using per-section fallback: {e}")
@@ -729,16 +725,6 @@ def fetch_all_sections() -> dict[str, list[dict]]:
 
         # Rank within section
         ranked = _rank_and_select(section, section_pool, n=section_limit)
-
-        # Pad if needed
-        if len(ranked) < section_limit:
-            used_urls = {_normalize_url(item["url"]) for item in ranked}
-            for item in section_pool:
-                if _normalize_url(item["url"]) not in used_urls:
-                    ranked.append(item)
-                    used_urls.add(_normalize_url(item["url"]))
-                if len(ranked) >= section_limit:
-                    break
 
         # Track globally used URLs
         for item in ranked[:section_limit]:
