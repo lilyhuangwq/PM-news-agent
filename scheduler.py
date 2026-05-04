@@ -48,6 +48,10 @@ def _today_has_data() -> bool:
 
 
 def start_scheduler() -> None:
+    import os
+    # Vercel serverless has no persistent process — skip APScheduler
+    if os.environ.get("VERCEL"):
+        return
     if not scheduler.get_job("daily_news_refresh"):
         scheduler.add_job(refresh_news, trigger="cron", hour=6, minute=0, id="daily_news_refresh")
     if not scheduler.running:

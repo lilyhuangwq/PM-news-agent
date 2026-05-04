@@ -63,6 +63,12 @@ async def api_refresh():
     refresh_news()
     return {"status": "refresh triggered"}
 
+@app.get("/api/cron")
+async def api_cron():
+    """Vercel Cron Job endpoint — triggers daily news refresh."""
+    refresh_news()
+    return {"status": "cron refresh completed"}
+
 
 class TranslateRequest(BaseModel):
     texts: list[str]

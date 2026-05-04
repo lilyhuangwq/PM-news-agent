@@ -4,35 +4,37 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Generator
 
-from sqlalchemy import Column, Date, Integer, String, create_engine, select
+from sqlalchemy import Column, Date, Integer, String, Text, create_engine, select
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 
-# Use /tmp on Vercel (read-only filesystem), local path otherwise
-if os.environ.get("VERCEL"):
-    DB_PATH = Path("/tmp/news_agent.db")
+# Use DATABASE_URL env var (Supabase Postgres) if set, otherwise local SQLite
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if DATABASE_URL:
+    engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=10)
 else:
     DB_PATH = Path(__file__).resolve().parent / "news_agent.db"
-DATABASE_URL = f"sqlite:///{DB_PATH}"
+    DATABASE_URL = f"sqlite:///{DB_PATH}"
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 Base = declarative_base()
 
 class NewsItem(Base):
     __tablename__ = "news_items"
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(512), nullable=False)
-    summary = Column(String(1024), nullable=False)
-    url = Column(String(1024), nullable=False, index=True)
+    title = Column(Text, nullable=False)
+    summary = Column(Text, nullable=False)
+    url = Column(Text, nullable=False, index=True)
     source = Column(String(256), nullable=False)
     section = Column(String(128), nullable=False, index=True)
     fetch_date = Column(Date, nullable=False, index=True)
-    what = Column(String(512), nullable=False)
-    so_what = Column(String(512), nullable=False)
+    what = Column(Text, nullable=False)
+    so_what = Column(Text, nullable=False)
 
 
 def create_db() -> None:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if not os.environ.get("DATABASE_URL"):
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(bind=engine)
 
 @contextmanager

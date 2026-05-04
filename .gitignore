@@ -6,3 +6,5 @@ __pycache__/
 .vercel/
 node_modules/
 .venv/
+.vercel
+.env*.local
