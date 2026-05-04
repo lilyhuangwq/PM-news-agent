@@ -34,9 +34,16 @@ async def api_news_today():
     # Before today's refresh, fall back to most recent available date
     dates = get_available_dates()
     if dates:
-        from datetime import date as date_type
-        latest = date_type.fromisoformat(dates[0])
+        latest = date.fromisoformat(dates[0])
         return get_news_by_date(latest)
+    # No data at all (e.g. fresh Vercel cold start) — fetch now
+    try:
+        refresh_news()
+        data = get_news_by_date(date.today())
+        if data:
+            return data
+    except Exception:
+        pass
     return {}
 
 @app.get("/api/news/{news_date}")
