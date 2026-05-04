@@ -72,38 +72,34 @@ FALLBACK_MIN_ITEMS = 3
 
 # Section-specific editorial focus for ranking
 SECTION_FOCUS = {
-    "AI & Tech Frontier": "Prioritize AI model releases, research breakthroughs, AI capability milestones, and major AI company news.",
-    "Product & Builder": "Prioritize major product launches, product updates, product strategy case studies, PMF stories, pricing changes, and builder tools. Must be about a specific product or product decision — NOT general AI industry news.",
-    "Startup & VC": "Prioritize AI-sector funding rounds ($10M+), M&A, investor public takes, startup launches, and market signals.",
-    "Global Tech": "Prioritize China/Japan/Korea/Europe big tech moves, cross-border expansion, geopolitics affecting tech, and US-Asia tech dynamics.",
-    "Deep Read": "Only select long-form analysis pieces with deep insight. Prioritize Stratechery, Every.to, a16z, Ben Evans caliber writing. Must be substantial analysis, not news summaries.",
+    "AI & Tech Frontier": """INCLUDE: AI model releases, capability breakthroughs, AI research papers with real-world impact, major AI infrastructure updates, big tech AI strategy moves (Google, OpenAI, Anthropic, Meta, Microsoft).
+EXCLUDE: general tech news unrelated to AI, opinion pieces without factual basis, crypto/blockchain unless directly AI-related.""",
+    "Product & Builder": """INCLUDE: major product launches, significant product updates or feature releases, product pivots, PMF stories with data, consumer app milestones (user growth, revenue), B2B SaaS major releases.
+EXCLUDE: minor bug fixes, incremental updates, marketing campaigns, general business news, anything without a concrete product change.""",
+    "Startup & VC": """INCLUDE: funding rounds (Series A and above, or notable pre-seed/seed in AI), acquisitions, mergers, IPOs, notable investor memos or theses, startup shutdowns with lessons, VC fund announcements.
+EXCLUDE: general business news, stock market updates, crypto fundraising, real estate, anything not directly about startup financing or M&A activity.""",
+    "Global Tech": """INCLUDE: major strategy moves from global tech giants (Google, Apple, Microsoft, Meta, Amazon, ByteDance, Tencent, Samsung, SoftBank), international market expansion, global regulatory changes affecting tech (EU AI Act, US export controls), cross-border acquisitions, global platform updates with significant user impact, emerging tech markets outside US.
+EXCLUDE: US-only domestic tech news (covered in AI section), general business news without tech angle, manufacturing and supply chain unless directly product-related, politics without direct tech impact.""",
+    "Deep Read": """INCLUDE: ONE long-form analysis (5+ min read), strategic frameworks for builders or founders, founder/investor essays with original insight, market thesis pieces from credible sources (Stratechery, Every.to, a16z, First Round Review). Include at least 2-3 insights.
+EXCLUDE: news articles, anything under 3 min read, listicles, how-to tutorials, anything without original strategic thinking.""",
 }
 
-RANKING_RULES = """Signal over Noise scoring:
-+3  Directly impacts AI product decisions or startup direction
-+2  Big tech strategic move (launch/acquisition/layoff)
-+2  Funding/market signal ($10M+ round, or clear trend)
-+1  Data-backed product/growth case study
--1  Opinion/prediction piece without factual basis
--2  Duplicate coverage of same event (pick best source only)
--2  PR piece / sponsored content
--3  Entertainment / non-industry content
-
-MUST INCLUDE if present:
-- Major AI model releases or capability breakthroughs
-- Big tech strategic moves (acquisitions, pivots, layoffs)
-- Funding rounds $10M+ in AI/tech
-- Regulatory changes affecting AI products
-
-PRIORITIZE:
+RANKING_RULES = """GLOBAL RULES (apply to all sections):
+- Never select duplicate coverage of the same event — pick the most original source, not aggregators
+- Prioritize articles published on the selected date
 - News with concrete data over opinion pieces
 - First reports over follow-up coverage
 - Builder/founder-relevant insights over general tech news
 
-EXCLUDE:
-- Duplicate coverage of same event (pick best source only)
-- PR pieces without substance
-- Prediction/speculation without factual basis"""
+Signal over Noise scoring:
++3  Directly impacts AI product decisions or startup direction
++2  Big tech strategic move (launch/acquisition/layoff)
++2  Funding/market signal (Series A+ round, or clear trend)
++1  Data-backed product/growth case study
+-1  Opinion/prediction piece without factual basis
+-2  Duplicate coverage of same event
+-2  PR piece / sponsored content
+-3  Entertainment / non-industry content"""
 
 
 def _normalize_url(url: str) -> str:
@@ -519,16 +515,18 @@ def _classify_articles(items: list[dict]) -> dict[str, list[dict]]:
     for i, item in enumerate(items):
         candidates.append(f"{i}. [{item.get('source_name','')}] {item['title']}\n   {item.get('summary','')[:120]}")
 
-    prompt = f"""You are a news editor classifying articles into sections for an AI PM newsletter.
+    prompt = f"""You are a senior news editor classifying articles into sections for an AI PM newsletter.
 
-Sections:
+SECTION RULES:
 {section_descriptions}
 
-IMPORTANT RULES:
+{RANKING_RULES}
+
+CLASSIFICATION RULES:
 - Each article goes to exactly ONE section
 - Assign exactly {MAX_ITEMS_PER_SECTION} articles per section, {len(SECTIONS)} sections, {MAX_ITEMS_PER_SECTION * len(SECTIONS)} articles total
-- "Product & Builder" must focus on specific product launches, product updates, product strategy, pricing, or builder tools. General AI news does NOT belong here.
-- "Deep Read" must be long-form analysis only, not news summaries
+- Follow the INCLUDE/EXCLUDE rules strictly for each section
+- Never select duplicate coverage of the same event — pick the most original source
 - Pick the BEST articles for each section from the pool below
 
 Articles:
