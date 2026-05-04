@@ -65,7 +65,7 @@ RSS_FEEDS = {
 
 NEWSAPI_URL = "https://newsapi.org/v2/everything"
 DEFAULT_NEWS_API_KEY = "7fa95189dff94e56896a65fa423a2d68"
-RSS_TIMEOUT = 10
+RSS_TIMEOUT = 5
 NEWSAPI_TIMEOUT = 10
 MAX_ITEMS_PER_SECTION = 5
 FALLBACK_MIN_ITEMS = 3
@@ -482,12 +482,16 @@ def fetch_section_rss_items(section: str, target_date: str | None = None) -> lis
     final_items = _rank_and_select(section, today_items)
 
     # Ensure we always return exactly MAX_ITEMS_PER_SECTION items
-    if len(final_items) < MAX_ITEMS_PER_SECTION and len(today_items) > len(final_items):
+    if len(final_items) < MAX_ITEMS_PER_SECTION:
         used_urls = {item["url"] for item in final_items}
-        for item in today_items:
-            if item["url"] not in used_urls:
-                final_items.append(item)
-                used_urls.add(item["url"])
+        # Pad from today_items first, then all_items
+        for pool in (today_items, all_items):
+            for item in pool:
+                if item["url"] not in used_urls:
+                    final_items.append(item)
+                    used_urls.add(item["url"])
+                if len(final_items) >= MAX_ITEMS_PER_SECTION:
+                    break
             if len(final_items) >= MAX_ITEMS_PER_SECTION:
                 break
 
