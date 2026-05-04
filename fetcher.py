@@ -204,21 +204,27 @@ def _newsapi_query(section: str) -> str:
     return "technology"
 
 
-def generate_summary(title: str, summary: str) -> tuple[str, str]:
+def generate_summary(title: str, summary: str) -> tuple[str, str, str]:
     if not client:
-        return summary or title, ""
+        return summary or title, "", "mid"
     prompt = f"""You are a news curator for an AI PM preparing to start an AI company in the US.
 
 Article title: {title}
 Article summary: {summary}
 
-Write two sections:
+Write three fields:
 
 1. "what" — 1 factual sentence, max 20 words. Include specific names, numbers, or data points. No opinions.
 
 2. "so_what" — 1 sentence on why this matters for an AI founder, max 25 words. Be concrete about strategic implications: market timing, competitive dynamics, regulatory risk, distribution, funding climate, or technical moats.
 
-Return ONLY valid JSON: {{"what": "...", "so_what": "..."}}
+3. "impact" — Rate as "high", "mid", or "low" using this scoring:
+   HIGH (+3): Major AI model release, big tech acquisition/pivot, $50M+ funding, regulatory shift
+   HIGH (+2): Big tech strategic move, $10M+ funding round, clear market trend signal
+   MID (+1): Data-backed product/growth case study, useful builder insight
+   LOW (-1 or below): Opinion/prediction without data, minor update, tangential news
+
+Return ONLY valid JSON: {{"what": "...", "so_what": "...", "impact": "high|mid|low"}}
 No markdown, no code fences."""
     try:
         response = client.chat.completions.create(
@@ -234,20 +240,26 @@ No markdown, no code fences."""
         data = json.loads(result)
         what = data.get("what") or summary or title
         so_what = data.get("so_what") or ""
-        return what, so_what
+        impact = data.get("impact", "mid").lower()
+        if impact not in ("high", "mid", "low"):
+            impact = "mid"
+        return what, so_what, impact
     except json.JSONDecodeError:
         # Try to extract JSON from the response
         try:
             start = result.index("{")
             end = result.rindex("}") + 1
             data = json.loads(result[start:end])
-            return data.get("what", summary or title), data.get("so_what", "")
+            impact = data.get("impact", "mid").lower()
+            if impact not in ("high", "mid", "low"):
+                impact = "mid"
+            return data.get("what", summary or title), data.get("so_what", ""), impact
         except (ValueError, json.JSONDecodeError):
             print(f"Failed to parse summary JSON: {result[:200]}")
-            return summary or title, ""
+            return summary or title, "", "mid"
     except Exception as e:
         print(f"Error generating summary: {e}")
-        return summary or title, ""
+        return summary or title, "", "mid"
 
 
 def _fetch_newsapi_fallback(section: str) -> list[dict]:
@@ -471,9 +483,10 @@ def fetch_section_rss_items(section: str, target_date: str | None = None) -> lis
 
     # Generate AI summaries only for the final selected items
     for item in final_items:
-        what, so_what = generate_summary(item["title"], item["summary"])
+        what, so_what, impact = generate_summary(item["title"], item["summary"])
         item["what"] = what
         item["so_what"] = so_what
+        item["impact"] = impact
 
     return final_items
 

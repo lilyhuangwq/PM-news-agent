@@ -281,10 +281,12 @@
                   <h3 class="text-xl font-bold text-gray-900 leading-snug">${titles[i]}</h3>
                 </a>
                 <div class="flex items-center gap-2 mt-2 text-xs text-gray-500 flex-wrap">
-                  <span class="inline-flex items-center gap-1 font-semibold uppercase tracking-wider text-gray-700">
-                    <span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
-                    HIGH IMPACT
-                  </span>
+                  ${(() => {
+                    const impact = (item.impact || 'mid').toLowerCase();
+                    if (impact === 'high') return '<span class="inline-flex items-center gap-1 font-semibold uppercase tracking-wider text-red-700"><span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>HIGH IMPACT</span>';
+                    if (impact === 'mid') return '<span class="inline-flex items-center gap-1 font-semibold uppercase tracking-wider text-amber-700"><span class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>MID IMPACT</span>';
+                    return '<span class="inline-flex items-center gap-1 font-semibold uppercase tracking-wider text-gray-500"><span class="w-2 h-2 rounded-full bg-gray-400 inline-block"></span>LOW IMPACT</span>';
+                  })()}
                   <span class="text-gray-300">·</span>
                   <span>${item.source || 'Unknown source'}</span>
                   <span class="text-gray-300">·</span>
