@@ -35,20 +35,19 @@ RSS_FEEDS = {
         "https://www.exponentialview.co/feed",
         "https://www.interconnects.ai/feed",
         "https://tldr.tech/api/rss/founders",
-        "https://www.producthunt.com/feed",
-        "https://hnrss.org/frontpage",
         "https://newsletter.pragmaticengineer.com/feed",
         "https://blog.superhuman.com/rss/",
         "https://www.intercom.com/blog/feed/",
         "https://www.svpg.com/feed/",
         "https://www.departmentofproduct.com/feed/",
-        "https://tldr.tech/api/rss/webdev",
     ],
     "Startup & VC": [
         "https://a16z.com/feed/",
         "https://bothsidesofthetable.com/feed",
         "https://news.ycombinator.com/rss",
         "https://pitchbook.com/news/rss",
+        "https://www.producthunt.com/feed",
+        "https://hnrss.org/frontpage",
     ],
     "Global Tech": [
         "https://technode.com/feed/",
@@ -211,9 +210,9 @@ Article summary: {summary}
 
 Write three fields:
 
-1. "what" — 1 factual sentence, max 20 words. Include specific names, numbers, or data points. No opinions.
+1. "what" — 2-3 factual sentences, 30-50 words. Include specific names, numbers, data points, and key details. No opinions.
 
-2. "so_what" — 1 sentence on why this matters for an AI founder, max 25 words. Be concrete about strategic implications: market timing, competitive dynamics, regulatory risk, distribution, funding climate, or technical moats.
+2. "so_what" — 2 sentences on why this matters for an AI founder, 30-50 words. Be concrete about strategic implications: market timing, competitive dynamics, regulatory risk, distribution, funding climate, or technical moats.
 
 3. "impact" — Rate as "high", "mid", or "low" using this scoring:
    HIGH (+3): Major AI model release, big tech acquisition/pivot, $50M+ funding, regulatory shift
