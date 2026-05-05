@@ -255,13 +255,49 @@ def get_preference_report() -> dict:
 
 
 _STOP_WORDS = {
+    # articles, prepositions, conjunctions, pronouns
     "the", "a", "an", "is", "are", "was", "were", "to", "of", "in", "for",
     "on", "with", "at", "by", "from", "its", "it", "and", "or", "but", "not",
     "be", "has", "have", "had", "do", "does", "did", "will", "would", "could",
-    "should", "can", "may", "might", "new", "how", "why", "what", "all", "up",
-    "out", "about", "just", "more", "most", "than", "that", "this", "into",
-    "over", "after", "before", "as", "no", "so", "if", "get", "got", "been",
-    "being", "make", "makes", "made", "first", "big", "says", "said", "one",
+    "should", "can", "may", "might", "that", "this", "these", "those", "they",
+    "them", "their", "there", "here", "where", "when", "which", "who", "whom",
+    "you", "your", "we", "our", "he", "she", "his", "her", "my", "me",
+    # common verbs / adjectives too generic to be topical
+    "new", "how", "why", "what", "all", "up", "out", "about", "just", "more",
+    "most", "than", "into", "over", "after", "before", "as", "no", "so", "if",
+    "get", "got", "been", "being", "make", "makes", "made", "first", "big",
+    "says", "said", "one", "also", "now", "still", "even", "back", "way",
+    "going", "goes", "come", "comes", "coming", "take", "takes", "taking",
+    "look", "looks", "looking", "give", "gives", "use", "uses", "using",
+    "show", "shows", "find", "found", "want", "wants", "need", "needs",
+    "try", "tries", "keep", "keeps", "let", "start", "stop", "run", "runs",
+    "set", "put", "turn", "turns", "help", "helps", "change", "changes",
+    "move", "moves", "play", "work", "works", "call", "calls", "long",
+    "own", "old", "right", "left", "high", "low", "end", "part", "last",
+    "next", "much", "each", "every", "both", "few", "many", "some", "any",
+    "other", "only", "very", "well", "too", "yet", "then", "down", "off",
+    "away", "again", "once", "ever", "never", "always", "often", "really",
+    "already", "around", "between", "through", "under", "along", "without",
+    "during", "toward", "towards", "upon", "across", "against", "among",
+    # generic news/headline words
+    "report", "reports", "according", "per", "via", "like", "near",
+    "early", "late", "top", "best", "full", "open", "close", "free",
+    "small", "large", "good", "bad", "great", "real", "true", "false",
+    "possible", "likely", "able", "going", "year", "years", "day", "days",
+    "week", "weeks", "month", "months", "time", "world", "today",
+    "people", "million", "billion", "percent", "number", "second", "third",
+    "company", "companies", "market", "business", "users", "data",
+    "color", "replace", "replaces", "replacing", "add", "adds", "adding",
+    "bring", "brings", "lead", "leads", "offer", "offers", "plan", "plans",
+    "face", "faces", "hit", "hits", "win", "wins", "lose", "lost",
+    "rise", "rises", "fall", "falls", "drop", "drops", "grow", "grows",
+    "build", "builds", "launch", "launches", "release", "releases",
+    "deal", "deals", "push", "pull", "test", "tests", "join", "joins",
+    "buy", "buys", "sell", "sells", "pay", "pays", "cut", "cuts",
+    "rule", "rules", "hold", "holds", "meet", "meets", "raise", "raises",
+    "could", "may", "might", "will", "just", "also", "become", "becomes",
+    "want", "feature", "features", "update", "updates", "support",
+    "ahead", "amid", "despite", "while", "until", "since", "whether",
 }
 
 
@@ -275,7 +311,7 @@ def _extract_topic_keywords(titles: list[str]) -> list[dict]:
     # Also track bigrams for better context
     bigram_freq: Counter = Counter()
     for title in titles:
-        words = [w.lower() for w in re.findall(r"[a-zA-Z']+", title) if len(w) > 2]
+        words = [w.lower() for w in re.findall(r"[a-zA-Z']+", title) if len(w) > 3]
         meaningful = [w for w in words if w not in _STOP_WORDS]
         for w in meaningful:
             word_freq[w] += 1
