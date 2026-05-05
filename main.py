@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from database import create_db, get_available_dates, get_news_by_date
+from database import create_db, get_available_dates, get_news_by_date, save_feedback, record_click, get_preference_report
 from scheduler import refresh_news, start_scheduler
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -75,3 +75,29 @@ async def api_cron():
     """Vercel Cron Job endpoint — triggers daily news refresh."""
     refresh_news()
     return {"status": "cron refresh completed"}
+
+
+@app.post("/api/feedback")
+async def api_feedback(body: dict):
+    url = body.get("url", "")
+    title = body.get("title", "")
+    source = body.get("source", "")
+    section = body.get("section", "")
+    vote = body.get("vote", "")
+    if vote not in ("up", "down"):
+        raise HTTPException(status_code=400, detail="vote must be 'up' or 'down'")
+    save_feedback(url=url, title=title, source=source, section=section, vote=vote)
+    return {"status": "ok"}
+
+
+@app.post("/api/click")
+async def api_click(body: dict):
+    url = body.get("url", "")
+    if url:
+        record_click(url)
+    return {"status": "ok"}
+
+
+@app.get("/api/preferences")
+async def api_preferences():
+    return get_preference_report()

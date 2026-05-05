@@ -47,6 +47,10 @@
               <i class="fas fa-language"></i>
               <span id="langLabel">中文</span>
             </button>
+            <button onclick="togglePrefsModal()" title="My Preferences"
+              class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-lg cursor-pointer">
+              🍐
+            </button>
           </div>
         </div>
         
@@ -90,6 +94,17 @@
       </div>
 
 
+    </div>
+  </div>
+
+  <!-- Preferences Modal -->
+  <div id="prefsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30" onclick="if(event.target===this)togglePrefsModal()">
+    <div class="bg-white rounded-xl shadow-2xl w-80 max-h-[80vh] overflow-y-auto p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-gray-900">🍐 My Preferences</h3>
+        <button onclick="togglePrefsModal()" class="text-gray-400 hover:text-gray-600 text-lg">&times;</button>
+      </div>
+      <div id="prefsContent"></div>
     </div>
   </div>
 
@@ -297,6 +312,7 @@
 
         document.getElementById('signalLabel').textContent = currentLang === 'zh' ? '今日信号：' : "Today's Signal:";
         document.getElementById('todaySignal').textContent = signalText || (currentLang === 'zh' ? '今日暂无信号。' : 'No signal available today.');
+        currentItems = displayItems;
         renderCards(displayItems, titles, whats, soWhats, whyLabel);
         return;
 
@@ -357,6 +373,14 @@
                 <p class="text-sm text-gray-700 leading-relaxed font-bold italic text-gray-900 mb-2">${whyLabel}</p>
                 <div class="text-sm text-gray-700 leading-relaxed">${formatSoWhat(soWhats[i])}</div>
               </div>` : ''}
+              <div class="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                <button onclick="sendFeedback('up', ${i})" data-url="${item.url}" class="feedback-btn flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-gray-500 hover:text-green-700 hover:bg-green-50 transition-colors">
+                  👍 <span>Relevant</span>
+                </button>
+                <button onclick="sendFeedback('down', ${i})" data-url="${item.url}" class="feedback-btn flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-gray-500 hover:text-red-700 hover:bg-red-50 transition-colors">
+                  👎 <span>Not for me</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -373,6 +397,93 @@
 
       renderTabs();
       loadNews();
+    }
+
+    // Feedback system
+    let currentItems = [];
+
+    function sendFeedback(vote, index) {
+      const item = currentItems[index];
+      if (!item) return;
+      fetch('/api/feedback', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({url: item.url, title: item.title, source: item.source, section: item.section, vote})
+      });
+      // Visual feedback
+      const cards = document.querySelectorAll('#newsFeed > div');
+      if (cards[index]) {
+        const btns = cards[index].querySelectorAll('.feedback-btn');
+        btns.forEach(b => b.style.opacity = '0.4');
+        const active = vote === 'up' ? btns[0] : btns[1];
+        active.style.opacity = '1';
+        active.classList.add(vote === 'up' ? 'text-green-700' : 'text-red-700');
+      }
+    }
+
+    // Track link clicks
+    document.addEventListener('click', (e) => {
+      const link = e.target.closest('a[href]');
+      if (link && link.href && !link.href.startsWith(location.origin)) {
+        fetch('/api/click', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({url: link.href})
+        });
+      }
+    });
+
+    // Preferences modal
+    function togglePrefsModal() {
+      const modal = document.getElementById('prefsModal');
+      if (modal.classList.contains('hidden')) {
+        modal.classList.remove('hidden');
+        loadPrefsReport();
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    async function loadPrefsReport() {
+      const content = document.getElementById('prefsContent');
+      content.innerHTML = '<p class="text-gray-400 text-sm">Loading...</p>';
+      try {
+        const r = await fetch('/api/preferences');
+        const d = await r.json();
+        let html = '';
+        
+        html += `<div class="mb-4">
+          <div class="flex gap-4 text-center">
+            <div class="flex-1 bg-green-50 rounded-lg p-3"><span class="text-2xl font-bold text-green-700">${d.thumbs_up}</span><p class="text-xs text-green-600 mt-1">👍 Relevant</p></div>
+            <div class="flex-1 bg-red-50 rounded-lg p-3"><span class="text-2xl font-bold text-red-700">${d.thumbs_down}</span><p class="text-xs text-red-600 mt-1">👎 Not for me</p></div>
+            <div class="flex-1 bg-blue-50 rounded-lg p-3"><span class="text-2xl font-bold text-blue-700">${d.click_rate}</span><p class="text-xs text-blue-600 mt-1">Click rate</p></div>
+          </div>
+        </div>`;
+
+        if (d.top_liked_sources.length) {
+          html += '<div class="mb-4"><h4 class="text-xs font-semibold text-gray-500 uppercase mb-2">⭐ Favorite Sources</h4><div class="space-y-1">';
+          d.top_liked_sources.forEach(s => {
+            html += `<div class="flex justify-between items-center text-sm"><span class="text-gray-700">${s.source}</span><span class="text-green-600 font-semibold">${s.count}×</span></div>`;
+          });
+          html += '</div></div>';
+        }
+
+        if (d.top_disliked_sections.length) {
+          html += '<div class="mb-4"><h4 class="text-xs font-semibold text-gray-500 uppercase mb-2">📉 Less Relevant Topics</h4><div class="space-y-1">';
+          d.top_disliked_sections.forEach(s => {
+            html += `<div class="flex justify-between items-center text-sm"><span class="text-gray-700">${s.section}</span><span class="text-red-600 font-semibold">${s.count}×</span></div>`;
+          });
+          html += '</div></div>';
+        }
+
+        if (!d.total_rated) {
+          html = '<p class="text-gray-400 text-sm text-center py-4">No feedback yet. Use 👍 / 👎 on news cards to build your preference profile.</p>';
+        }
+
+        content.innerHTML = html;
+      } catch(e) {
+        content.innerHTML = '<p class="text-red-400 text-sm">Failed to load preferences</p>';
+      }
     }
   </script>
 </body>

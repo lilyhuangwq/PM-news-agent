@@ -43,8 +43,29 @@ GLOBAL RULES (apply to all sections):
 - Enterprise / Productivity AI product prioritized slightly"""
 
 
+def _get_preference_suffix() -> str:
+    """Load user preference data from feedback and append to system prompt."""
+    try:
+        from database import get_preference_report
+        report = get_preference_report()
+        if not report.get("total_rated"):
+            return ""
+        parts = ["\n\nUSER PREFERENCE PROFILE (auto-generated from feedback):"]
+        if report["top_liked_sources"]:
+            sources = ", ".join(s["source"] for s in report["top_liked_sources"])
+            parts.append(f"- Preferred sources (prioritize): {sources}")
+        if report["top_disliked_sections"]:
+            topics = ", ".join(s["section"] for s in report["top_disliked_sections"])
+            parts.append(f"- Less relevant topics (deprioritize): {topics}")
+        parts.append(f"- Engagement: {report['click_rate']} click rate, {report['thumbs_up']} likes / {report['thumbs_down']} dislikes")
+        return "\n".join(parts)
+    except Exception:
+        return ""
+
+
 def _messages(prompt: str) -> list[dict]:
-    return [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}]
+    system = SYSTEM_PROMPT + _get_preference_suffix()
+    return [{"role": "system", "content": system}, {"role": "user", "content": prompt}]
 
 
 SECTIONS = [

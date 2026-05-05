@@ -4,7 +4,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Generator
 
-from sqlalchemy import Column, Date, Integer, String, Text, create_engine, select
+from sqlalchemy import Column, Date, Integer, String, Text, DateTime, create_engine, select, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 
@@ -35,6 +35,18 @@ class NewsItem(Base):
     title_zh = Column(Text, nullable=True)
     what_zh = Column(Text, nullable=True)
     so_what_zh = Column(Text, nullable=True)
+
+
+class Feedback(Base):
+    __tablename__ = "feedback"
+    id = Column(Integer, primary_key=True, index=True)
+    url = Column(Text, nullable=False)
+    title = Column(Text, nullable=False)
+    source = Column(String(256), nullable=False)
+    section = Column(String(128), nullable=False)
+    vote = Column(String(10), nullable=False)  # 'up' or 'down'
+    clicked = Column(Integer, default=0)  # 1 if user clicked the link
+    created_at = Column(DateTime, nullable=False)
 
 
 def create_db() -> None:
@@ -162,3 +174,67 @@ def get_news(section: str | None = None) -> list[dict]:
             }
             for item in results
         ]
+
+
+def save_feedback(url: str, title: str, source: str, section: str, vote: str) -> None:
+    with get_session() as session:
+        session.add(Feedback(
+            url=url, title=title, source=source, section=section,
+            vote=vote, created_at=datetime.utcnow()
+        ))
+        session.commit()
+
+
+def record_click(url: str) -> None:
+    with get_session() as session:
+        fb = session.execute(
+            select(Feedback).where(Feedback.url == url).order_by(Feedback.created_at.desc())
+        ).scalars().first()
+        if fb:
+            fb.clicked = 1
+            session.commit()
+        else:
+            session.add(Feedback(
+                url=url, title="", source="", section="",
+                vote="click", clicked=1, created_at=datetime.utcnow()
+            ))
+            session.commit()
+
+
+def get_preference_report() -> dict:
+    with get_session() as session:
+        # Top liked sources
+        liked_sources = session.execute(
+            select(Feedback.source, func.count(Feedback.id).label("cnt"))
+            .where(Feedback.vote == "up", Feedback.source != "")
+            .group_by(Feedback.source)
+            .order_by(func.count(Feedback.id).desc())
+            .limit(5)
+        ).all()
+
+        # Top disliked sections/topics
+        disliked_sections = session.execute(
+            select(Feedback.section, func.count(Feedback.id).label("cnt"))
+            .where(Feedback.vote == "down", Feedback.section != "")
+            .group_by(Feedback.section)
+            .order_by(func.count(Feedback.id).desc())
+            .limit(5)
+        ).all()
+
+        # Click rate
+        total = session.execute(select(func.count(Feedback.id)).where(Feedback.vote.in_(["up", "down"]))).scalar() or 0
+        clicked = session.execute(select(func.count(Feedback.id)).where(Feedback.clicked == 1)).scalar() or 0
+
+        # Recent feedback counts
+        up_count = session.execute(select(func.count(Feedback.id)).where(Feedback.vote == "up")).scalar() or 0
+        down_count = session.execute(select(func.count(Feedback.id)).where(Feedback.vote == "down")).scalar() or 0
+
+        return {
+            "top_liked_sources": [{"source": r[0], "count": r[1]} for r in liked_sources],
+            "top_disliked_sections": [{"section": r[0], "count": r[1]} for r in disliked_sections],
+            "total_rated": total,
+            "total_clicked": clicked,
+            "click_rate": f"{(clicked/total*100):.0f}%" if total > 0 else "0%",
+            "thumbs_up": up_count,
+            "thumbs_down": down_count,
+        }
