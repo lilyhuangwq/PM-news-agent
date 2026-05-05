@@ -107,7 +107,11 @@
     ];
 
     let activeTab = 'AI & Tech Frontier';
-    const todayKey = new Date().toISOString().split("T")[0];
+    const todayKey = (() => {
+      const now = new Date();
+      const pdt = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+      return pdt.getFullYear() + '-' + String(pdt.getMonth()+1).padStart(2,'0') + '-' + String(pdt.getDate()).padStart(2,'0');
+    })();
 
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
