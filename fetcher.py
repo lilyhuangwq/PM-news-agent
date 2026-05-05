@@ -54,9 +54,9 @@ def _get_preference_suffix() -> str:
         if report["top_liked_sources"]:
             sources = ", ".join(s["source"] for s in report["top_liked_sources"])
             parts.append(f"- Preferred sources (prioritize): {sources}")
-        if report["top_disliked_sections"]:
-            topics = ", ".join(s["section"] for s in report["top_disliked_sections"])
-            parts.append(f"- Less relevant topics (deprioritize): {topics}")
+        if report.get("disliked_topics"):
+            topics = ", ".join(t["topic"] for t in report["disliked_topics"])
+            parts.append(f"- Topics user finds irrelevant (avoid or deprioritize): {topics}")
         parts.append(f"- Engagement: {report['click_rate']} click rate, {report['thumbs_up']} likes / {report['thumbs_down']} dislikes")
         return "\n".join(parts)
     except Exception:

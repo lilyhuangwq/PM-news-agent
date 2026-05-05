@@ -468,10 +468,10 @@
           html += '</div></div>';
         }
 
-        if (d.top_disliked_sections.length) {
-          html += '<div class="mb-4"><h4 class="text-xs font-semibold text-gray-500 uppercase mb-2">📉 Less Relevant Topics</h4><div class="space-y-1">';
-          d.top_disliked_sections.forEach(s => {
-            html += `<div class="flex justify-between items-center text-sm"><span class="text-gray-700">${s.section}</span><span class="text-red-600 font-semibold">${s.count}×</span></div>`;
+        if (d.disliked_topics && d.disliked_topics.length) {
+          html += '<div class="mb-4"><h4 class="text-xs font-semibold text-gray-500 uppercase mb-2">📉 Topics You Skip</h4><div class="flex flex-wrap gap-1.5">';
+          d.disliked_topics.forEach(t => {
+            html += `<span class="inline-flex items-center gap-1 px-2 py-1 bg-red-50 text-red-700 rounded-full text-xs font-medium">${t.topic} <span class="text-red-400">${t.count}×</span></span>`;
           });
           html += '</div></div>';
         }

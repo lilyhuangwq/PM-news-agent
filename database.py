@@ -228,14 +228,12 @@ def get_preference_report() -> dict:
             .limit(5)
         ).all()
 
-        # Top disliked sections/topics
-        disliked_sections = session.execute(
-            select(Feedback.section, func.count(Feedback.id).label("cnt"))
-            .where(Feedback.vote == "down", Feedback.section != "")
-            .group_by(Feedback.section)
-            .order_by(func.count(Feedback.id).desc())
-            .limit(5)
-        ).all()
+        # Extract disliked topic keywords from 👎'd article titles
+        disliked_titles = session.execute(
+            select(Feedback.title).where(Feedback.vote == "down", Feedback.title != "")
+        ).scalars().all()
+
+        disliked_topics = _extract_topic_keywords(disliked_titles)
 
         # Click rate
         total = session.execute(select(func.count(Feedback.id)).where(Feedback.vote.in_(["up", "down"]))).scalar() or 0
@@ -247,10 +245,53 @@ def get_preference_report() -> dict:
 
         return {
             "top_liked_sources": [{"source": r[0], "count": r[1]} for r in liked_sources],
-            "top_disliked_sections": [{"section": r[0], "count": r[1]} for r in disliked_sections],
+            "disliked_topics": disliked_topics,
             "total_rated": total,
             "total_clicked": clicked,
             "click_rate": f"{(clicked/total*100):.0f}%" if total > 0 else "0%",
             "thumbs_up": up_count,
             "thumbs_down": down_count,
         }
+
+
+_STOP_WORDS = {
+    "the", "a", "an", "is", "are", "was", "were", "to", "of", "in", "for",
+    "on", "with", "at", "by", "from", "its", "it", "and", "or", "but", "not",
+    "be", "has", "have", "had", "do", "does", "did", "will", "would", "could",
+    "should", "can", "may", "might", "new", "how", "why", "what", "all", "up",
+    "out", "about", "just", "more", "most", "than", "that", "this", "into",
+    "over", "after", "before", "as", "no", "so", "if", "get", "got", "been",
+    "being", "make", "makes", "made", "first", "big", "says", "said", "one",
+}
+
+
+def _extract_topic_keywords(titles: list[str]) -> list[dict]:
+    """Extract meaningful topic keywords from disliked article titles."""
+    import re
+    from collections import Counter
+    if not titles:
+        return []
+    word_freq: Counter = Counter()
+    # Also track bigrams for better context
+    bigram_freq: Counter = Counter()
+    for title in titles:
+        words = [w.lower() for w in re.findall(r"[a-zA-Z']+", title) if len(w) > 2]
+        meaningful = [w for w in words if w not in _STOP_WORDS]
+        for w in meaningful:
+            word_freq[w] += 1
+        for i in range(len(meaningful) - 1):
+            bigram_freq[f"{meaningful[i]} {meaningful[i+1]}"] += 1
+
+    # Combine: prefer bigrams that appear 2+ times, then top single words
+    results = []
+    seen_words = set()
+    for bigram, count in bigram_freq.most_common(5):
+        if count >= 2:
+            results.append({"topic": bigram, "count": count})
+            seen_words.update(bigram.split())
+    for word, count in word_freq.most_common(10):
+        if word not in seen_words and count >= 1:
+            results.append({"topic": word, "count": count})
+            if len(results) >= 8:
+                break
+    return results
