@@ -263,6 +263,52 @@ No markdown, no code fences."""
         return summary or title, "", "mid"
 
 
+def generate_deep_read_summary(title: str, summary: str) -> tuple[str, str, str]:
+    """Generate a long-form Deep Read summary (~5 min read, 3-5 insight points)."""
+    if not client:
+        return summary or title, "", "high"
+    prompt = f"""You are a senior tech strategist writing the "Deep Read" section of a daily AI newsletter for product managers and founders.
+
+Article title: {title}
+Article summary: {summary}
+
+Write a comprehensive deep-dive analysis. This is the ONE featured long-form piece of the day — make it worth 5 minutes of the reader's time.
+
+Write two fields:
+
+1. "what" — A thorough analysis (8-12 sentences) that covers:
+   - The core argument or thesis of the piece
+   - Key data points, examples, or evidence cited
+   - The broader context: what trends, market shifts, or strategic dynamics does this connect to?
+   - Any counterarguments or nuances worth noting
+
+2. "so_what" — 3 to 5 numbered insight points for AI founders and PMs. Each insight should be 2-3 sentences. Format them as:
+   1. **[Insight Title]**: [Explanation of why this matters and what to do about it]
+   2. **[Insight Title]**: [Explanation]
+   ...
+   Focus on actionable strategic implications: market timing, competitive positioning, technical moats, go-to-market, fundraising signals, regulatory risks, or product strategy.
+
+Return ONLY valid JSON: {{"what": "...", "so_what": "...", "impact": "high"}}
+No markdown, no code fences."""
+    try:
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+        result = response.choices[0].message.content.strip()
+        if result.startswith("```"):
+            result = result.split("\n", 1)[-1]
+            result = result.rsplit("```", 1)[0].strip()
+        data = json.loads(result)
+        what = data.get("what") or summary or title
+        so_what = data.get("so_what") or ""
+        return what, so_what, "high"
+    except Exception as e:
+        print(f"Error generating deep read summary: {e}")
+        return summary or title, "", "high"
+
+
 def _fetch_newsapi_fallback(section: str) -> list[dict]:
     api_key = os.getenv("NEWS_API_KEY", DEFAULT_NEWS_API_KEY)
     query = _newsapi_query(section)
@@ -732,7 +778,10 @@ def fetch_all_sections() -> dict[str, list[dict]]:
 
         # Generate summaries
         for item in ranked[:section_limit]:
-            what, so_what, impact = generate_summary(item["title"], item["summary"])
+            if section == "Deep Read":
+                what, so_what, impact = generate_deep_read_summary(item["title"], item["summary"])
+            else:
+                what, so_what, impact = generate_summary(item["title"], item["summary"])
             item["what"] = what
             item["so_what"] = so_what
             item["impact"] = impact
