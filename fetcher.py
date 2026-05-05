@@ -12,6 +12,41 @@ client = openai.OpenAI(
     base_url="https://api.deepseek.com",
 )
 
+SYSTEM_PROMPT = """You are a senior news curator for a daily AI/tech newsletter targeting product managers and founders.
+
+SECTION RULES:
+
+🤖 AI & Tech Frontier
+INCLUDE: AI model releases, capability breakthroughs, AI research papers with real-world impact, major AI infrastructure updates, big tech AI strategy moves (Google, OpenAI, Anthropic, Meta, Microsoft)
+EXCLUDE: general tech news unrelated to AI, opinion pieces without factual basis, crypto/blockchain unless directly AI-related
+
+📦 Product
+INCLUDE: major product launches, significant product updates or feature releases, product pivots, PMF stories with data, consumer app milestones (user growth, revenue), B2B SaaS major releases
+EXCLUDE: minor bug fixes, incremental updates, marketing campaigns, general business news, anything without a concrete product change
+
+💰 VC & Startup
+INCLUDE: funding rounds (Series A and above, or notable pre-seed/seed in AI), acquisitions, mergers, IPOs, notable investor memos or theses, startup shutdowns with lessons, VC fund announcements
+EXCLUDE: general business news, stock market updates, crypto fundraising, real estate, anything not directly about startup financing or M&A activity
+
+🌏 Global Tech
+INCLUDE: major strategy moves from global tech giants (Google, Apple, Microsoft, Meta, Amazon, ByteDance, Tencent, Samsung, SoftBank), international market expansion, global regulatory changes affecting tech (EU AI Act, US export controls), cross-border acquisitions, global platform updates with significant user impact, emerging tech markets outside US
+EXCLUDE: US-only domestic tech news (covered in AI section), general business news without tech angle, manufacturing and supply chain unless directly product-related, politics without direct tech impact
+
+🧠 Deep Read
+INCLUDE: ONE long-form analysis (5 min read), strategic frameworks for builders or founders, founder/investor essays with original insight, market thesis pieces from credible sources (Stratechery, Every.to, a16z, First Round Review). Include at least 2-3 insights.
+EXCLUDE: news articles, anything under 3 min read, listicles, how-to tutorials, anything without original strategic thinking
+
+GLOBAL RULES (apply to all sections):
+- Never select duplicate coverage of the same event
+- Always pick the most original source, not aggregators
+- Articles must be published for the selected date
+- Enterprise / Productivity AI product prioritized slightly"""
+
+
+def _messages(prompt: str) -> list[dict]:
+    return [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}]
+
+
 SECTIONS = [
     "AI & Tech Frontier",
     "Product & Builder",
@@ -230,7 +265,7 @@ No markdown, no code fences."""
     try:
         response = client.chat.completions.create(
             model="deepseek-chat",
-            messages=[{"role": "user", "content": prompt}],
+            messages=_messages(prompt),
             response_format={"type": "json_object"}
         )
         result = response.choices[0].message.content.strip()
@@ -293,7 +328,7 @@ No markdown, no code fences."""
     try:
         response = client.chat.completions.create(
             model="deepseek-chat",
-            messages=[{"role": "user", "content": prompt}],
+            messages=_messages(prompt),
             response_format={"type": "json_object"}
         )
         result = response.choices[0].message.content.strip()
@@ -441,7 +476,7 @@ No explanation, no markdown."""
         try:
             response = client.chat.completions.create(
                 model="deepseek-chat",
-                messages=[{"role": "user", "content": prompt}],
+                messages=_messages(prompt),
                 response_format={"type": "json_object"}
             )
             data = json.loads(response.choices[0].message.content.strip())
@@ -482,7 +517,7 @@ No explanation, no markdown."""
     try:
         response = client.chat.completions.create(
             model="deepseek-chat",
-            messages=[{"role": "user", "content": prompt}],
+            messages=_messages(prompt),
             response_format={"type": "json_object"}
         )
         data = json.loads(response.choices[0].message.content.strip())
@@ -657,7 +692,7 @@ No explanation, no markdown."""
     try:
         response = client.chat.completions.create(
             model="deepseek-chat",
-            messages=[{"role": "user", "content": prompt}],
+            messages=_messages(prompt),
             response_format={"type": "json_object"}
         )
         data = json.loads(response.choices[0].message.content.strip())
