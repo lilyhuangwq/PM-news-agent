@@ -771,8 +771,19 @@ def translate_batch(texts: list[str]) -> list[str]:
         parts = response.choices[0].message.content.strip().split("---")
         translations = [p.strip() for p in parts]
         result = list(texts)
-        for j, (orig_idx, _) in enumerate(non_empty):
-            result[orig_idx] = translations[j] if j < len(translations) else texts[orig_idx]
+        for j, (orig_idx, orig_text) in enumerate(non_empty):
+            translated = translations[j] if j < len(translations) else ""
+            # Validate: if still looks English, retry individually
+            if not translated or (orig_text and len(orig_text) > 20 and translated[:30] == orig_text[:30]):
+                try:
+                    r2 = client.chat.completions.create(
+                        model="deepseek-chat",
+                        messages=[{"role": "user", "content": "Translate to Chinese (Simplified). Return ONLY the translation:\n\n" + orig_text}],
+                    )
+                    translated = r2.choices[0].message.content.strip()
+                except Exception:
+                    translated = orig_text
+            result[orig_idx] = translated
         return result
     except Exception as e:
         print(f"Translation failed: {e}")
