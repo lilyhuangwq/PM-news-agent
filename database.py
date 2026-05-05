@@ -176,7 +176,23 @@ def get_news(section: str | None = None) -> list[dict]:
         ]
 
 
+_SOURCE_NAMES = {
+    "techcrunch.com": "TechCrunch", "theverge.com": "The Verge",
+    "arstechnica.com": "Ars Technica", "importai.substack.com": "Import AI",
+    "openai.com": "OpenAI", "sierra.ai": "Sierra", "bbc.co.uk": "BBC",
+    "arxiv.org": "arXiv", "interconnects.ai": "Interconnects",
+    "stratechery.com": "Stratechery", "economist.com": "The Economist",
+    "addyosmani.com": "Addy Osmani", "github.com": "GitHub",
+    "pv-magazine.com": "PV Magazine",
+}
+
+
+def _normalize_source(source: str) -> str:
+    return _SOURCE_NAMES.get(source.lower().strip(), source)
+
+
 def save_feedback(url: str, title: str, source: str, section: str, vote: str) -> None:
+    source = _normalize_source(source)
     with get_session() as session:
         session.add(Feedback(
             url=url, title=title, source=source, section=section,
