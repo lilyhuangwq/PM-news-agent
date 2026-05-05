@@ -1,6 +1,6 @@
 import logging
 import threading
-from datetime import date, datetime
+from datetime import date, datetime, timezone, timedelta
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fetcher import fetch_all_sections, translate_batch
@@ -8,6 +8,11 @@ from database import get_available_dates, save_news_batch
 
 logger = logging.getLogger("pm_news_agent.scheduler")
 scheduler = BackgroundScheduler(timezone="America/Los_Angeles")
+
+_PDT = timezone(timedelta(hours=-7))
+
+def _today_pdt() -> date:
+    return datetime.now(_PDT).date()
 
 
 def _build_batch_items(section_items: dict[str, list[dict]], fetch_date: date) -> list[dict]:
@@ -32,7 +37,7 @@ def _build_batch_items(section_items: dict[str, list[dict]], fetch_date: date) -
 
 
 def refresh_news() -> None:
-    fetch_date = date.today()
+    fetch_date = _today_pdt()
     timestamp = datetime.now().isoformat()
     try:
         section_items = fetch_all_sections()
@@ -73,7 +78,7 @@ def _pre_translate_batch(batch: list[dict]) -> None:
 
 
 def _today_has_data() -> bool:
-    today_key = date.today().isoformat()
+    today_key = _today_pdt().isoformat()
     return today_key in get_available_dates()
 
 

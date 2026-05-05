@@ -47,7 +47,6 @@
               <i class="fas fa-language"></i>
               <span id="langLabel">中文</span>
             </button>
-            <span class="text-sm text-gray-600" id="todayDate"></span>
           </div>
         </div>
         
@@ -118,15 +117,7 @@
       setTimeout(() => loadNews(), 100);
     });
 
-    function updateDate() {
-      const now = new Date();
-      const todayDate = document.getElementById('todayDate');
-      todayDate.textContent = now.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
-      });
-    }
+    function updateDate() {}
 
     function renderTabs() {
       const tabContainer = document.getElementById('tabContainer');

@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from datetime import date
+from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -10,6 +10,11 @@ from database import create_db, get_available_dates, get_news_by_date
 from scheduler import refresh_news, start_scheduler
 
 BASE_DIR = Path(__file__).resolve().parent
+
+_PDT = timezone(timedelta(hours=-7))
+
+def _today_pdt() -> date:
+    return datetime.now(_PDT).date()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -30,7 +35,7 @@ _NEWS_CACHE_HEADERS = {"Cache-Control": "public, s-maxage=600, max-age=300, stal
 @app.get("/api/news/today")
 async def api_news_today():
     from fastapi.responses import JSONResponse
-    data = get_news_by_date(date.today())
+    data = get_news_by_date(_today_pdt())
     if data:
         return JSONResponse(content=data, headers=_NEWS_CACHE_HEADERS)
     # Before today's refresh, fall back to most recent available date
@@ -41,7 +46,7 @@ async def api_news_today():
     # No data at all (e.g. fresh Vercel cold start) — fetch now
     try:
         refresh_news()
-        data = get_news_by_date(date.today())
+        data = get_news_by_date(_today_pdt())
         if data:
             return data
     except Exception:
