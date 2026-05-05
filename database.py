@@ -45,6 +45,7 @@ class Feedback(Base):
     source = Column(String(256), nullable=False)
     section = Column(String(128), nullable=False)
     vote = Column(String(10), nullable=False)  # 'up' or 'down'
+    reason = Column(Text, nullable=True)  # optional user-provided reason for downvote
     clicked = Column(Integer, default=0)  # 1 if user clicked the link
     created_at = Column(DateTime, nullable=False)
 
@@ -191,12 +192,12 @@ def _normalize_source(source: str) -> str:
     return _SOURCE_NAMES.get(source.lower().strip(), source)
 
 
-def save_feedback(url: str, title: str, source: str, section: str, vote: str) -> None:
+def save_feedback(url: str, title: str, source: str, section: str, vote: str, reason: str = "") -> None:
     source = _normalize_source(source)
     with get_session() as session:
         session.add(Feedback(
             url=url, title=title, source=source, section=section,
-            vote=vote, created_at=datetime.utcnow()
+            vote=vote, reason=reason or None, created_at=datetime.utcnow()
         ))
         session.commit()
 
@@ -243,9 +244,19 @@ def get_preference_report() -> dict:
         up_count = session.execute(select(func.count(Feedback.id)).where(Feedback.vote == "up")).scalar() or 0
         down_count = session.execute(select(func.count(Feedback.id)).where(Feedback.vote == "down")).scalar() or 0
 
+        # User-provided reasons for downvotes
+        reasons = session.execute(
+            select(Feedback.reason, Feedback.title, Feedback.section)
+            .where(Feedback.vote == "down", Feedback.reason.isnot(None), Feedback.reason != "")
+            .order_by(Feedback.created_at.desc())
+            .limit(20)
+        ).all()
+        user_reasons = [{"reason": r[0], "title": r[1], "section": r[2]} for r in reasons]
+
         return {
             "top_liked_sources": [{"source": r[0], "count": r[1]} for r in liked_sources],
             "disliked_topics": disliked_topics,
+            "user_reasons": user_reasons,
             "total_rated": total,
             "total_clicked": clicked,
             "click_rate": f"{(clicked/total*100):.0f}%" if total > 0 else "0%",

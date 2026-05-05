@@ -84,9 +84,10 @@ async def api_feedback(body: dict):
     source = body.get("source", "")
     section = body.get("section", "")
     vote = body.get("vote", "")
+    reason = body.get("reason", "")
     if vote not in ("up", "down"):
         raise HTTPException(status_code=400, detail="vote must be 'up' or 'down'")
-    save_feedback(url=url, title=title, source=source, section=section, vote=vote)
+    save_feedback(url=url, title=title, source=source, section=section, vote=vote, reason=reason)
     return {"status": "ok"}
 
 
