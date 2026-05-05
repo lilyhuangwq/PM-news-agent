@@ -282,11 +282,11 @@ Write two fields:
    - The broader context: what trends, market shifts, or strategic dynamics does this connect to?
    - Any counterarguments or nuances worth noting
 
-2. "so_what" — 3 to 5 numbered insight points for AI founders and PMs. Each insight should be 2-3 sentences. Format them as:
-   1. **[Insight Title]**: [Explanation of why this matters and what to do about it]
-   2. **[Insight Title]**: [Explanation]
+2. "so_what" — 3 to 5 bullet-point insights for AI founders and PMs. Each bullet should be 1-3 sentences. Format them as:
+   • **[Insight Title]**: [Explanation of why this matters and what to do about it]
+   • **[Insight Title]**: [Explanation]
    ...
-   Focus on actionable strategic implications: market timing, competitive positioning, technical moats, go-to-market, fundraising signals, regulatory risks, or product strategy.
+   Use the bullet character • to start each point. Focus on actionable strategic implications: market timing, competitive positioning, technical moats, go-to-market, fundraising signals, regulatory risks, or product strategy.
 
 Return ONLY valid JSON: {{"what": "...", "so_what": "...", "impact": "high"}}
 No markdown, no code fences."""

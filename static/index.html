@@ -319,6 +319,20 @@
       await loadNews(date);
     }
 
+    function formatSoWhat(text) {
+      if (!text) return '';
+      const lines = text.split(/\n/).map(l => l.trim()).filter(Boolean);
+      const bullets = lines.filter(l => /^[\u2022\-\d]/.test(l));
+      if (bullets.length >= 2) {
+        return '<ul class="list-disc list-inside space-y-2 mt-1">' +
+          bullets.map(b => {
+            const clean = b.replace(/^[\u2022\-]\s*/, '').replace(/^\d+[\.\)]\s*/, '');
+            return '<li>' + clean.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') + '</li>';
+          }).join('') + '</ul>';
+      }
+      return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    }
+
     function renderCards(displayItems, titles, whats, soWhats, whyLabel) {
       const newsFeed = document.getElementById('newsFeed');
       newsFeed.innerHTML = displayItems.map((item, i) => `
@@ -345,9 +359,8 @@
               <p class="text-sm text-gray-700 leading-relaxed mt-4">${whats[i]}</p>
               ${soWhats[i] ? `
               <div class="mt-4 border-l-4 border-amber-400 bg-amber-50 rounded-r-lg py-3 px-4">
-                <p class="text-sm text-gray-700 leading-relaxed">
-                  <span class="font-bold italic text-gray-900">${whyLabel}</span>&nbsp; ${soWhats[i]}
-                </p>
+                <p class="text-sm text-gray-700 leading-relaxed font-bold italic text-gray-900 mb-2">${whyLabel}</p>
+                <div class="text-sm text-gray-700 leading-relaxed">${formatSoWhat(soWhats[i])}</div>
               </div>` : ''}
             </div>
           </div>
